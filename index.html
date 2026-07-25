@@ -250,24 +250,6 @@
       linear-gradient(var(--teal),var(--teal)) center/1px 5px no-repeat,
       linear-gradient(90deg,var(--teal),var(--teal)) center/5px 1px no-repeat;
   }
-  .knob.start-clue .dot{
-    border-color:var(--brass);
-    box-shadow:0 0 0 3px rgba(14,22,32,.9),0 0 16px rgba(208,168,82,.65);
-  }
-  .knob.start-clue .dot::before{
-    border-color:var(--brass);
-    animation:startClue 1s ease-in-out infinite alternate;
-  }
-  .knob.start-clue .half::before,.knob.start-clue .half span{opacity:.1}
-  .knob.start-clue.clue-cw .half.cw::before,
-  .knob.start-clue.clue-cw .half.cw span,
-  .knob.start-clue.clue-ccw .half.ccw::before,
-  .knob.start-clue.clue-ccw .half.ccw span{opacity:1}
-  .knob.start-clue.clue-cw .half.cw::before,
-  .knob.start-clue.clue-ccw .half.ccw::before{border-color:var(--brass)}
-  .knob.start-clue.clue-cw .half.cw span,
-  .knob.start-clue.clue-ccw .half.ccw span{color:var(--brass);font-size:1.35em;font-weight:700}
-  @keyframes startClue{to{transform:translate(-50%,-50%) scale(1.28);opacity:.55}}
   .half{
     position:absolute;top:calc(var(--k) / -2);height:var(--k);width:calc(var(--k) / 2);
     padding:0;border:0;background:transparent;cursor:pointer;
@@ -664,11 +646,10 @@
   var state = [];            // state[マス番号] = 駒ID(0..15)
   var tiles = [];            // tiles[駒ID] = DOM
   var history = [];          // [{p, cw}]
-  var moves = 0, busy = false, started = 0, timer = null, solved = false;
+  var moves = 0, busy = false, solved = false;
   var stageNo = 1, puzzlePar = 1;
   var clearedStages = new Set();
   var stageRecords = Object.create(null);
-  var stageClueP = -1, puzzleFirstP = -1, puzzleFirstCw = true;
   var qualityMode = false, hintUsed = false;
   var freeMode = false, freeInitial = null;
   var introOn = false;
@@ -677,7 +658,9 @@
   var demoOn = false, demoUsed = false, demoTimer = null;
   var solutionCache = new Map();
   var distanceCache = new Map();
-  var qualityReady = new Set();
+  var solvedTailReady = false;
+  var solvedTailNext = new Map(), solvedTailMove = new Map(), solvedTailDepth = new Map();
+  var fullSolverDistance = null, fullSolverMove = null, solverWorker = null;
   var tutorialOn = false, tutorialStep = 0, tutorialKind = 'adjacent';
   var adjacentTutorialSteps = [
     { p:1, cw:true,  why:'まず右上を右へ。8と9を交換するため、中央を使って動かし始めます。' },
@@ -891,13 +874,7 @@
   /* 手を1つ記録する（手数と時計を進める） */
   function logMove(p, cw){
     history.push({ p: p, cw: cw });
-    if (moves === 0) clearStartClue();
     moves++;
-  }
-
-  function clearStartClue(){
-    if (stageClueP >= 0) knobs[stageClueP].classList.remove('start-clue','clue-cw','clue-ccw');
-    stageClueP = -1;
   }
 
   /* ---------- 回転 ----------
@@ -969,7 +946,6 @@
     updateStageOptions();
     var allClear = clearedStages.size === 15;
     winFeedback(allClear, answerViewed, hintUsed, freeMode);
-    clearInterval(timer);
     board.classList.add('won');
     tiles.forEach(function(t, i){ t.style.animationDelay = (i * 26) + 'ms'; });
     setKnobsEnabled(false);
@@ -985,8 +961,7 @@
       say('全問クリア！ 15問すべて完成しました。お見事です。', true);
     } else if (stageNo >= 15){
       say('クリア！ プルダウンから未クリアの問題に挑戦しましょう。', true);
-    } else if (demoOn || demoUsed) say('答え合わせ完了。最短' + puzzlePar + '手でした。', true);
-    else if (moves === puzzlePar) say('最短手数でクリア！ 「次の問題へ」で進みましょう。', true);
+    } else if (moves === puzzlePar) say('最短手数でクリア！ 「次の問題へ」で進みましょう。', true);
     else say('クリア！ ' + moves + '手で完成しました。「次の問題へ」で進みましょう。', true);
   }
 
@@ -998,12 +973,10 @@
     qualityMode = false; hintUsed = false;
     hintBtn.classList.remove('live');
     hintLabel.textContent = 'HINTをON';
-    clearInterval(timer); timer = null; started = 0;
     board.classList.remove('won');
     tiles.forEach(function(t){ t.style.animation = 'none'; void t.offsetWidth; t.style.animation = ''; });
     setKnobsEnabled(true);
     solved = false; moves = 0; history = []; busy = false; demoUsed = false;
-    clearStartClue();
     puzzlePar = Math.max(1, Math.min(5, n || puzzlePar));
     stageSelect.value = String(stageNo);
     nextBtn.innerHTML = '次の問題へ → <span class="key">N</span>';
@@ -1092,29 +1065,27 @@
           }
           return improvingMoves === desiredChoices && valid === 1;
         });
-        var usedSameDepth = new Set();
-        Object.keys(stageRecords).forEach(function(stageKey){
-          var stageNumber = Number(stageKey);
-          var sameGroup = (puzzlePar === 4 && stageNumber >= 10 && stageNumber <= 12) ||
-                          (puzzlePar === 5 && stageNumber >= 13);
-          if (sameGroup && stageNumber !== stageNo)
-            usedSameDepth.add(stageRecords[stageKey].s.join(''));
-        });
-        var unusedSameDepth = frontier.filter(function(node){ return !usedSameDepth.has(node.s.join('')); });
-        if (unusedSameDepth.length) frontier = unusedSameDepth;
       }
+      var usedSameDepth = new Set();
+      Object.keys(stageRecords).forEach(function(stageKey){
+        var stageNumber = Number(stageKey);
+        var recordPar = stageNumber >= 13 ? 5 :
+          (stageNumber >= 10 ? 4 : Math.min(3, Math.ceil(stageNumber / 3)));
+        if (recordPar === puzzlePar) usedSameDepth.add(stageRecords[stageKey].s.join(''));
+      });
+      var unusedSameDepth = frontier.filter(function(node){ return !usedSameDepth.has(node.s.join('')); });
+      if (unusedSameDepth.length) frontier = unusedSameDepth;
       chosen = frontier[Math.floor(Math.random() * frontier.length)];
       stageRecords[stageNo] = { s:chosen.s.slice(), path:chosen.path.slice() };
     }
     state = chosen.s.slice();
     scrambleMoves = chosen.path.slice();
-    puzzleFirstP = -1;
 
     relayout();
     refresh();
     say('問題 ' + stageNo + ' — 最短' + puzzlePar + '手。' +
       (stageNo === 1
-        ? '交点の左側で左回り、右側で右回り。光る矢印の方向へ90°回します。'
+        ? '交点を中心に、ひねるように90°回してみましょう。'
         : puzzlePar >= 3
         ? '回した後の4枚を想像して、次の1手を選んでください。'
         : '回した後の4枚を想像してみてください。'));
@@ -1289,12 +1260,9 @@
     var currentKey = state.join('');
     var nextKey = permuteArray(state, p, cw).join('');
     var otherKey = permuteArray(state, p, !cw).join('');
-    if (!distanceCache.has(currentKey) || !distanceCache.has(nextKey) || !distanceCache.has(otherKey)) autoQueue();
-    var before = distanceCache.get(currentKey);
-    var after = distanceCache.get(nextKey);
-    if (after == null){ after = before + 1; distanceCache.set(nextKey, after); }
-    var otherAfter = distanceCache.get(otherKey);
-    if (otherAfter == null){ otherAfter = before + 1; distanceCache.set(otherKey, otherAfter); }
+    var before = distanceForKey(currentKey);
+    var after = distanceForKey(nextKey);
+    var otherAfter = distanceForKey(otherKey);
     var kind = after < before ? 'good' : (after === before ? 'same' : 'bad');
     var otherKind = otherAfter < before ? 'good' : (otherAfter === before ? 'same' : 'bad');
     knobs[p].classList.add('evaluating');
@@ -1492,48 +1460,153 @@
     return next;
   }
 
-  function autoQueue(){
-    var target = state.join('');
-    if (solutionCache.has(target) && qualityReady.has(target)) return solutionCache.get(target).slice();
+  function permutationRank(src){
+    var rank = 0, factor = 1;
+    for (var i = TILE_COUNT - 1; i >= 0; i--){
+      var smaller = 0;
+      for (var j = i + 1; j < TILE_COUNT; j++) if (src[j] < src[i]) smaller++;
+      rank += smaller * factor;
+      factor *= TILE_COUNT - i;
+    }
+    return rank;
+  }
+
+  function startSolverWorker(){
+    if (solverWorker || fullSolverDistance || !window.Worker) return;
+    var workerSource =
+      'var N=9,TOTAL=362880,C=[[0,1,4,3],[1,2,5,4],[3,4,7,6],[4,5,8,7]];' +
+      'function rank(s){var r=0,f=1;for(var i=N-1;i>=0;i--){var n=0;for(var j=i+1;j<N;j++)if(s[j]<s[i])n++;r+=n*f;f*=N-i}return r}' +
+      'function unrank(r){var pool=[0,1,2,3,4,5,6,7,8],digits=new Array(N),s=new Array(N);for(var i=1;i<=N;i++){digits[N-i]=r%i;r=Math.floor(r/i)}for(var k=0;k<N;k++)s[k]=pool.splice(digits[k],1)[0];return s}' +
+      'function turn(s,p,cw){var n=s.slice(),c=C[p];for(var k=0;k<4;k++)if(cw)n[c[(k+1)%4]]=s[c[k]];else n[c[k]]=s[c[(k+1)%4]];return n}' +
+      'var d=new Int8Array(TOTAL),m=new Int8Array(TOTAL),q=new Int32Array(TOTAL);d.fill(-1);m.fill(-1);d[0]=0;var h=0,t=1;q[0]=0;' +
+      'while(h<t){var r=q[h++],s=unrank(r),nd=d[r]+1;for(var p=0;p<4;p++)for(var z=0;z<2;z++){var cw=z===0,n=turn(s,p,cw),nr=rank(n);if(d[nr]>=0)continue;d[nr]=nd;m[nr]=p*2+(cw?0:1);q[t++]=nr}}' +
+      'postMessage({distance:d.buffer,move:m.buffer},[d.buffer,m.buffer]);';
+    try {
+      var blobUrl = URL.createObjectURL(new Blob([workerSource], { type:'text/javascript' }));
+      solverWorker = new Worker(blobUrl);
+      solverWorker.onmessage = function(e){
+        fullSolverDistance = new Int8Array(e.data.distance);
+        fullSolverMove = new Int8Array(e.data.move);
+        solverWorker.terminate(); solverWorker = null;
+        URL.revokeObjectURL(blobUrl);
+      };
+      solverWorker.onerror = function(){
+        solverWorker.terminate(); solverWorker = null;
+        URL.revokeObjectURL(blobUrl);
+      };
+    } catch (e) { solverWorker = null; }
+  }
+
+  function buildSolvedTail(){
+    if (solvedTailReady) return;
     var solvedState = [], id;
     for (id = 0; id < TILE_COUNT; id++) solvedState[id] = id;
-    if (target === solvedState.join('')) return [];
-
-    var states = [solvedState], parent = [-1], viaP = [-1], viaCw = [false], depth = [0];
-    var seen = new Map([[solvedState.join(''), 0]]);
-    var head = 0, found = -1, targetDepth = -1;
-
-    while (head < states.length){
-      if (targetDepth >= 0 && depth[head] >= targetDepth) break;
-      var src = states[head];
+    var solvedKey = solvedState.join('');
+    var queue = [solvedState], head = 0;
+    solvedTailNext.set(solvedKey, null);
+    solvedTailDepth.set(solvedKey, 0);
+    while (head < queue.length){
+      var src = queue[head++], srcKey = src.join('');
+      var depth = solvedTailDepth.get(srcKey);
+      if (depth >= 5) continue;
       for (var p = 0; p < PIVOT_COUNT; p++){
         for (var dir = 0; dir < 2; dir++){
           var cw = dir === 0;
           var next = permuteArray(src, p, cw);
           var key = next.join('');
-          if (seen.has(key)) continue;
-          var at = states.length;
-          seen.set(key, at);
-          states.push(next); parent.push(head); viaP.push(p); viaCw.push(cw); depth.push(depth[head] + 1);
-          if (key === target){ found = at; targetDepth = depth[at]; }
+          if (solvedTailDepth.has(key)) continue;
+          solvedTailDepth.set(key, depth + 1);
+          solvedTailNext.set(key, srcKey);
+          solvedTailMove.set(key, { p:p, cw:!cw });
+          queue.push(next);
         }
       }
-      head++;
     }
-    seen.forEach(function(at, key){ distanceCache.set(key, depth[at]); });
-    qualityReady.add(target);
+    solvedTailReady = true;
+  }
 
-    var q = [];
-    while (found > 0){
-      q.push({ p: viaP[found], cw: !viaCw[found] });
-      found = parent[found];
+  function cacheSolution(src, path){
+    var cacheState = src.slice();
+    for (var step = 0; step <= path.length; step++){
+      var key = cacheState.join('');
+      if (!solutionCache.has(key)) solutionCache.set(key, path.slice(step));
+      distanceCache.set(key, path.length - step);
+      if (step < path.length)
+        cacheState = permuteArray(cacheState, path[step].p, path[step].cw);
     }
-    var cacheState = state.slice();
-    for (var step = 0; step <= q.length; step++){
-      solutionCache.set(cacheState.join(''), q.slice(step));
-      if (step < q.length) cacheState = permuteArray(cacheState, q[step].p, q[step].cw);
+  }
+
+  function solutionFor(src){
+    var targetKey = src.join('');
+    if (solutionCache.has(targetKey)) return solutionCache.get(targetKey).slice();
+    if (fullSolverMove){
+      var direct = [], directState = src.slice(), rank = permutationRank(directState);
+      while (rank !== 0){
+        var code = fullSolverMove[rank];
+        var move = { p:Math.floor(code / 2), cw:!!(code & 1) };
+        direct.push(move);
+        directState = permuteArray(directState, move.p, move.cw);
+        rank = permutationRank(directState);
+      }
+      cacheSolution(src, direct);
+      return direct.slice();
     }
-    return q;
+    buildSolvedTail();
+
+    var states = [src.slice()], keys = [targetKey], depths = [0], head = 0;
+    var seen = new Map([[targetKey, 0]]);
+    var parent = new Map(), via = new Map();
+    var bestMeet = null, bestTotal = Infinity;
+
+    while (head < states.length){
+      var current = states[head], currentKey = keys[head], currentDepth = depths[head];
+      head++;
+      if (currentDepth >= bestTotal) break;
+      if (solvedTailDepth.has(currentKey)){
+        var total = currentDepth + solvedTailDepth.get(currentKey);
+        if (total < bestTotal){ bestTotal = total; bestMeet = currentKey; }
+      }
+      if (currentDepth + 1 >= bestTotal) continue;
+      for (var p = 0; p < PIVOT_COUNT; p++){
+        for (var dir = 0; dir < 2; dir++){
+          var cw = dir === 0;
+          var next = permuteArray(current, p, cw);
+          var key = next.join('');
+          if (seen.has(key)) continue;
+          seen.set(key, currentDepth + 1);
+          parent.set(key, currentKey);
+          via.set(key, { p:p, cw:cw });
+          states.push(next); keys.push(key); depths.push(currentDepth + 1);
+        }
+      }
+    }
+
+    var forward = [], walk = bestMeet;
+    while (walk !== targetKey){
+      forward.push(via.get(walk));
+      walk = parent.get(walk);
+    }
+    forward.reverse();
+    walk = bestMeet;
+    while (solvedTailNext.get(walk) !== null){
+      forward.push(solvedTailMove.get(walk));
+      walk = solvedTailNext.get(walk);
+    }
+    cacheSolution(src, forward);
+    return forward.slice();
+  }
+
+  function distanceForKey(key){
+    if (fullSolverDistance) return fullSolverDistance[permutationRank(key.split('').map(Number))];
+    if (!distanceCache.has(key)){
+      var src = key.split('').map(Number);
+      cacheSolution(src, solutionFor(src));
+    }
+    return distanceCache.get(key);
+  }
+
+  function autoQueue(){
+    return solutionFor(state);
   }
 
   function toggleDemo(){
@@ -1544,6 +1617,11 @@
 
   function showHint(){
     if (busy || solved || demoOn || tutorialOn) return;
+    if (freeMode && !fullSolverDistance){
+      startSolverWorker();
+      say('上級者用フリーの最短ルートを準備中です。少し待ってからもう一度押してください。');
+      return;
+    }
     qualityMode = !qualityMode;
     if (qualityMode) hintUsed = true;
     clearPreview();
@@ -1614,9 +1692,7 @@
     qualityMode = false;
     hintBtn.classList.remove('live');
     hintLabel.textContent = 'HINTをON';
-    clearInterval(timer); timer = null; started = 0;
     board.classList.remove('won');
-    clearStartClue();
     tiles.forEach(function(t){ t.style.animation = 'none'; void t.offsetWidth; t.style.animation = ''; });
     tutorialOn = true; tutorialStep = 0; solved = false; moves = 0; history = [];
     state = tutorialKind === 'adjacent' ? [0,1,2,3,4,5,6,8,7] :
@@ -1655,9 +1731,7 @@
     if (tutorialOn) stopTutorial(false);
     stopDemo(true);
     closeCelebration();
-    clearInterval(timer); timer = null; started = 0;
     board.classList.remove('won');
-    clearStartClue();
     clearPreview();
     qualityMode = false; hintUsed = false; demoUsed = false;
     hintBtn.classList.remove('live');
@@ -1755,12 +1829,15 @@
 
   function startDemo(){
     if (busy || solved || tutorialOn) return;
+    if (freeMode && !fullSolverMove){
+      startSolverWorker();
+      say('上級者用フリーの答えを準備中です。少し待ってからもう一度押してください。');
+      return;
+    }
     var queue = autoQueue();
     if (!queue.length) return;
 
     demoOn = true; demoUsed = true;
-    clearStartClue();
-    clearInterval(timer); timer = null;          // 時間は止める（手数も進めない）
     clearPreview();
     setKnobsEnabled(false);
     undoBtn.disabled = true; resetBtn.disabled = true; mixBtn.disabled = true; hintBtn.disabled = true;
@@ -1818,10 +1895,6 @@
     var last = history.pop();
     moves = Math.max(0, moves - 1);
     rotate(last.p, !last.cw, {});
-    if (moves === 0 && puzzlePar === 3 && puzzleFirstP >= 0){
-      stageClueP = puzzleFirstP;
-      knobs[stageClueP].classList.add('start-clue', puzzleFirstCw ? 'clue-cw' : 'clue-ccw');
-    }
     say('1手もどしました。手数も1つ減ります。');
   }
 
@@ -1867,6 +1940,7 @@
   /* ---------- 起動 ---------- */
   build();
   bindKnobs();
+  startSolverWorker();
   updateStageOptions();
   runIntro();
   if (window.ResizeObserver){
