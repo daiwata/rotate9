@@ -375,8 +375,8 @@
   #demoBtn.live{border-color:var(--teal);color:var(--teal);background:#14313a}
   #hintBtn{grid-column:auto;border-color:rgba(90,201,180,.55)}
   #hintBtn.live{border-color:var(--teal);color:var(--teal);background:#14313a}
-  #tutorialBtn,#diagonalBtn,#diagonal68Btn{grid-column:auto;border-color:rgba(208,168,82,.45)}
-  #tutorialBtn.live,#diagonalBtn.live,#diagonal68Btn.live{
+  #tutorialBtn,#diagonalBtn,#diagonal68Btn,#escapeBtn{grid-column:auto;border-color:rgba(208,168,82,.45)}
+  #tutorialBtn.live,#diagonalBtn.live,#diagonal68Btn.live,#escapeBtn.live{
     border-color:var(--teal);color:var(--teal);background:#14313a;
   }
   #nextBtn{grid-column:auto;border-color:var(--teal);color:var(--teal)}
@@ -598,6 +598,7 @@
             <button class="btn" id="tutorialBtn"><span id="tutorialLabel">隣同士（8・9）交換レッスン</span> <span class="key">T</span></button>
             <button class="btn" id="diagonalBtn"><span id="diagonalLabel">斜め（5・9）交換レッスン</span></button>
             <button class="btn" id="diagonal68Btn"><span id="diagonal68Label">斜め（6・8）交換レッスン</span></button>
+            <button class="btn" id="escapeBtn"><span id="escapeLabel">6・8・9 脱出レッスン</span></button>
             <button class="btn" id="freeBtn">上級者用フリー</button>
           </div>
         </details>
@@ -659,6 +660,8 @@
   var diagonalLabel = document.getElementById('diagonalLabel');
   var diagonal68Btn = document.getElementById('diagonal68Btn');
   var diagonal68Label = document.getElementById('diagonal68Label');
+  var escapeBtn = document.getElementById('escapeBtn');
+  var escapeLabel = document.getElementById('escapeLabel');
   var freeBtn = document.getElementById('freeBtn');
   var nextBtn = document.getElementById('nextBtn');
   var prevBtn = document.getElementById('prevBtn');
@@ -667,6 +670,7 @@
   var startBtn = document.getElementById('startBtn');
 
   var reduce = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+  var coarsePointer = !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
 
   /* ---------- 状態 ---------- */
   var state = [];            // state[マス番号] = 駒ID(0..15)
@@ -710,6 +714,14 @@
     { p:0, cw:false, why:'左上を左へ戻し、周囲の数字を回収し始めます。' },
     { p:1, cw:false, why:'右上を左へ戻します。6と8だけを残す形に整えます。' },
     { p:2, cw:false, why:'最後に左下を左へ。6と8だけが交換され、残り7枚は元通りです。' }
+  ];
+  var escapeTutorialSteps = [
+    { p:3, cw:true,  why:'まず右下を右へ。6・8・9の詰まりを、動かせる形へ開きます。' },
+    { p:2, cw:false, why:'左下を左へ。下段だけにこだわらず、中央を使う準備です。' },
+    { p:1, cw:true,  why:'右上を右へ。ここまでの3手で大きく崩し、3枚の順序を組み替えます。' },
+    { p:2, cw:true,  why:'左下を右へ戻します。ここからは崩した周囲を回収する3手です。' },
+    { p:1, cw:false, why:'右上を左へ戻します。上段と中央が一気に元へ戻ります。' },
+    { p:3, cw:true,  why:'最後に右下を右へ。6・8・9が正しい順序になり、完成です。' }
   ];
   var tutorialSteps = adjacentTutorialSteps;
   var SIZE = 3, PIVOT_SIZE = SIZE - 1;
@@ -764,6 +776,7 @@
             '<button type="button" data-clear-action="adjacent">隣同士（8・9）交換</button>' +
             '<button type="button" data-clear-action="diagonal">斜め（5・9）交換</button>' +
             '<button type="button" data-clear-action="diagonal68">斜め（6・8）交換</button>' +
+            '<button type="button" data-clear-action="escape">6・8・9 脱出</button>' +
           '</div>' +
         '</div>' +
         '<div class="celebration-actions">' +
@@ -885,10 +898,11 @@
     tutorialBtn.disabled = busy || demoOn || (tutorialOn && tutorialKind !== 'adjacent');
     diagonalBtn.disabled = busy || demoOn || (tutorialOn && tutorialKind !== 'diagonal');
     diagonal68Btn.disabled = busy || demoOn || (tutorialOn && tutorialKind !== 'diagonal68');
+    escapeBtn.disabled = busy || demoOn || (tutorialOn && tutorialKind !== 'escape');
     freeBtn.disabled = busy || demoOn || tutorialOn;
     if (introOn){
       undoBtn.disabled = resetBtn.disabled = hintBtn.disabled = mixBtn.disabled = demoBtn.disabled =
-        tutorialBtn.disabled = diagonalBtn.disabled = diagonal68Btn.disabled = freeBtn.disabled =
+        tutorialBtn.disabled = diagonalBtn.disabled = diagonal68Btn.disabled = escapeBtn.disabled = freeBtn.disabled =
         prevBtn.disabled = nextBtn.disabled = stageSelect.disabled = true;
     }
   }
@@ -1329,7 +1343,8 @@
       items.push({ el: tiles[state[cyc[j]]], ox: c.x - kc.x, oy: c.y - kc.y });
     }
     var a = angleAt(pt, kc);
-    drag = { p: p, kc: kc, items: items, lastAngle: a, deg: 0, t0: Date.now(), id: e.pointerId };
+    drag = { p: p, kc: kc, items: items, lastAngle: a, deg: 0, t0: Date.now(),
+      id: e.pointerId, hintCw: null };
     showCandidate(-1);
     try { board.setPointerCapture(e.pointerId); } catch (_) {}
     board.classList.add('dragging');
@@ -1370,6 +1385,16 @@
     orbits[drag.p].classList.toggle('rev', !cw);
     knobs[drag.p].classList.toggle('press-cw',  cw && shown);
     knobs[drag.p].classList.toggle('press-ccw', !cw && shown);
+    if (qualityMode && shown && drag.hintCw !== cw){
+      showMoveQuality(drag.p, cw);
+      drag.hintCw = cw;
+    } else if (qualityMode && !shown && drag.hintCw !== null){
+      board.classList.remove('quality-good','quality-same','quality-bad');
+      qualityLabel.className = 'quality-label';
+      knobs[drag.p].classList.remove('evaluating',
+        'cw-good','cw-same','cw-bad','ccw-good','ccw-same','ccw-bad');
+      drag.hintCw = null;
+    }
   });
 
   function endDrag(e){
@@ -1660,7 +1685,9 @@
     hintBtn.classList.toggle('live', qualityMode);
     hintLabel.textContent = qualityMode ? 'HINTをOFF' : 'HINTをON';
     say(qualityMode
-      ? '距離表示をONにしました。盤上をマウスで探ると、緑・黄・赤で候補手を評価します。'
+      ? (coarsePointer
+        ? 'HINTをONにしました。盤面を少しスワイプすると、指を離す前にその方向を評価します。'
+        : '距離表示をONにしました。盤上をマウスで探ると、緑・黄・赤で候補手を評価します。')
       : '距離表示をOFFにしました。ここからは盤面だけを見て考えてみてください。');
   }
 
@@ -1688,7 +1715,8 @@
     elStat.classList.add('tutorial');
     elStat.classList.remove('win');
     var lessonTitle = tutorialKind === 'adjacent' ? '隣同士（8・9）交換レッスン' :
-      (tutorialKind === 'diagonal' ? '斜め（5・9）交換レッスン' : '斜め（6・8）交換レッスン');
+      (tutorialKind === 'diagonal' ? '斜め（5・9）交換レッスン' :
+      (tutorialKind === 'diagonal68' ? '斜め（6・8）交換レッスン' : '6・8・9 脱出レッスン'));
     elStat.innerHTML =
       '<div class="hint-title">' + lessonTitle + ' — 手順 ' +
       (tutorialStep + 1) + ' / ' + tutorialSteps.length + '</div>' +
@@ -1706,12 +1734,19 @@
     clearPreview();
     if (tutorialKind === 'adjacent') tutorialLabel.textContent = 'レッスン完了';
     else if (tutorialKind === 'diagonal') diagonalLabel.textContent = 'レッスン完了';
-    else diagonal68Label.textContent = 'レッスン完了';
+    else if (tutorialKind === 'diagonal68') diagonal68Label.textContent = 'レッスン完了';
+    else escapeLabel.textContent = 'レッスン完了';
     elStat.classList.add('win');
-    var pair = tutorialKind === 'adjacent' ? '8と9' : (tutorialKind === 'diagonal' ? '5と9' : '6と8');
-    elStat.innerHTML =
-      '<div class="hint-title">成功：' + pair + 'だけを交換できました。</div>' +
-      '<div class="hint-reason">途中で崩しても、逆向きの回転で周囲を回収すれば、狙った2枚だけを交換できます。</div>';
+    if (tutorialKind === 'escape'){
+      elStat.innerHTML =
+        '<div class="hint-title">成功：6・8・9の詰まりを最短6手で脱出しました。</div>' +
+        '<div class="hint-reason">下段だけで直そうとせず、3手で大きく崩してから3手で回収するのがポイントです。</div>';
+    } else {
+      var pair = tutorialKind === 'adjacent' ? '8と9' : (tutorialKind === 'diagonal' ? '5と9' : '6と8');
+      elStat.innerHTML =
+        '<div class="hint-title">成功：' + pair + 'だけを交換できました。</div>' +
+        '<div class="hint-reason">途中で崩しても、逆向きの回転で周囲を回収すれば、狙った2枚だけを交換できます。</div>';
+    }
   }
 
   function startTutorial(kind){
@@ -1720,7 +1755,8 @@
     freeMode = false;
     tutorialKind = kind || 'adjacent';
     tutorialSteps = tutorialKind === 'adjacent' ? adjacentTutorialSteps :
-      (tutorialKind === 'diagonal' ? diagonalTutorialSteps : diagonal68TutorialSteps);
+      (tutorialKind === 'diagonal' ? diagonalTutorialSteps :
+      (tutorialKind === 'diagonal68' ? diagonal68TutorialSteps : escapeTutorialSteps));
     qualityMode = false;
     hintBtn.classList.remove('live');
     hintLabel.textContent = 'HINTをON';
@@ -1728,7 +1764,8 @@
     tiles.forEach(function(t){ t.style.animation = 'none'; void t.offsetWidth; t.style.animation = ''; });
     tutorialOn = true; tutorialStep = 0; solved = false; moves = 0; history = [];
     state = tutorialKind === 'adjacent' ? [0,1,2,3,4,5,6,8,7] :
-      (tutorialKind === 'diagonal' ? [0,1,2,3,8,5,6,7,4] : [0,1,2,3,4,7,6,5,8]);
+      (tutorialKind === 'diagonal' ? [0,1,2,3,8,5,6,7,4] :
+      (tutorialKind === 'diagonal68' ? [0,1,2,3,4,7,6,5,8] : [0,1,2,3,4,7,6,8,5]));
     relayout();
     elMoves.textContent = '0';
     setKnobsEnabled(true);
@@ -1736,9 +1773,11 @@
     tutorialBtn.classList.toggle('live', tutorialKind === 'adjacent');
     diagonalBtn.classList.toggle('live', tutorialKind === 'diagonal');
     diagonal68Btn.classList.toggle('live', tutorialKind === 'diagonal68');
+    escapeBtn.classList.toggle('live', tutorialKind === 'escape');
     if (tutorialKind === 'adjacent') tutorialLabel.textContent = 'レッスンを終了';
     else if (tutorialKind === 'diagonal') diagonalLabel.textContent = 'レッスンを終了';
-    else diagonal68Label.textContent = 'レッスンを終了';
+    else if (tutorialKind === 'diagonal68') diagonal68Label.textContent = 'レッスンを終了';
+    else escapeLabel.textContent = 'レッスンを終了';
     refresh();
     renderTutorial();
   }
@@ -1750,9 +1789,11 @@
     tutorialBtn.classList.remove('live');
     diagonalBtn.classList.remove('live');
     diagonal68Btn.classList.remove('live');
+    escapeBtn.classList.remove('live');
     tutorialLabel.textContent = '隣同士（8・9）交換レッスン';
     diagonalLabel.textContent = '斜め（5・9）交換レッスン';
     diagonal68Label.textContent = '斜め（6・8）交換レッスン';
+    escapeLabel.textContent = '6・8・9 脱出レッスン';
     mixBtn.disabled = false; resetBtn.disabled = false; hintBtn.disabled = false; demoBtn.disabled = false;
     if (startGame) scramble(puzzlePar, true);
     else refresh();
@@ -1853,7 +1894,7 @@
     introOn = false;
     stageRecords = Object.create(null);
     undoBtn.disabled = resetBtn.disabled = hintBtn.disabled = mixBtn.disabled = demoBtn.disabled =
-      tutorialBtn.disabled = diagonalBtn.disabled = diagonal68Btn.disabled = freeBtn.disabled =
+      tutorialBtn.disabled = diagonalBtn.disabled = diagonal68Btn.disabled = escapeBtn.disabled = freeBtn.disabled =
       prevBtn.disabled = nextBtn.disabled = stageSelect.disabled = false;
     stageNo = 1; puzzlePar = 1;
     scramble(1, false);
@@ -1957,6 +1998,10 @@
   diagonal68Btn.addEventListener('click', function(){
     if (tutorialOn) stopTutorial(true);
     else startTutorial('diagonal68');
+  });
+  escapeBtn.addEventListener('click', function(){
+    if (tutorialOn) stopTutorial(true);
+    else startTutorial('escape');
   });
   freeBtn.addEventListener('click', function(){ startFreeGame(false); });
   nextBtn.addEventListener('click', nextPuzzle);
