@@ -19,6 +19,10 @@
     --bone:#ece7db;
     --ink:#16202e;
     --muted:#8b9cb4;
+    --zone-a:rgba(64,151,176,.18);
+    --zone-b:rgba(126,112,181,.16);
+    --zone-c:rgba(200,157,73,.17);
+    --zone-d:rgba(73,165,129,.17);
     --jp:"Zen Kaku Gothic New","Hiragino Sans","Hiragino Kaku Gothic ProN","Noto Sans JP",system-ui,sans-serif;
     --num:"Space Grotesk","Helvetica Neue",Arial,system-ui,sans-serif;
   }
@@ -104,6 +108,28 @@
     transition:opacity .18s ease, box-shadow .18s ease, filter .18s ease;
   }
   .tile span{transform:translateY(-.02em)}
+  .tile span{position:relative;z-index:2}
+  .tile::after{
+    content:"";position:absolute;inset:0;z-index:1;border-radius:inherit;
+    pointer-events:none;opacity:1;filter:saturate(1.35) brightness(1.08);
+    transition:opacity .18s ease,filter .18s ease;
+  }
+  .tile.zone-0::after{background:var(--zone-a)}
+  .tile.zone-1::after{background:linear-gradient(90deg,var(--zone-a) 0 50%,var(--zone-b) 50% 100%)}
+  .tile.zone-2::after{background:var(--zone-b)}
+  .tile.zone-3::after{background:linear-gradient(180deg,var(--zone-a) 0 50%,var(--zone-c) 50% 100%)}
+  .tile.zone-4::after{
+    background:
+      linear-gradient(var(--zone-a),var(--zone-a)) 0 0/50% 50% no-repeat,
+      linear-gradient(var(--zone-b),var(--zone-b)) 100% 0/50% 50% no-repeat,
+      linear-gradient(var(--zone-c),var(--zone-c)) 0 100%/50% 50% no-repeat,
+      linear-gradient(var(--zone-d),var(--zone-d)) 100% 100%/50% 50% no-repeat;
+  }
+  .tile.zone-5::after{background:linear-gradient(180deg,var(--zone-b) 0 50%,var(--zone-d) 50% 100%)}
+  .tile.zone-6::after{background:var(--zone-c)}
+  .tile.zone-7::after{background:linear-gradient(90deg,var(--zone-c) 0 50%,var(--zone-d) 50% 100%)}
+  .tile.zone-8::after{background:var(--zone-d)}
+  .board.previewing .tile.lit::after{filter:saturate(1.6) brightness(1.12)}
   .tile.home::before{
     content:"✓";position:absolute;right:5px;top:5px;width:16px;height:16px;border-radius:5px;
     display:flex;align-items:center;justify-content:center;
@@ -838,8 +864,14 @@
     var n = 0;
     for (var i = 0; i < TILE_COUNT; i++){
       var home = state[i] === i;
+      var tile = tiles[state[i]];
       if (home) n++;
-      tiles[state[i]].classList.toggle('home', home);
+      tile.classList.toggle('home', home);
+      if (tile.dataset.zone !== String(i)){
+        if (tile.dataset.zone != null) tile.classList.remove('zone-' + tile.dataset.zone);
+        tile.dataset.zone = String(i);
+        tile.classList.add('zone-' + i);
+      }
     }
     headlinePar.textContent = tutorialOn ? '5' : (freeMode ? '?' : puzzlePar);
     headlineStage.textContent = tutorialOn ? 'LESSON' : (freeMode ? '上級者用フリー' : '問題 ' + stageNo);
