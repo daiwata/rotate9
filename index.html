@@ -1,0 +1,1623 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ROTATE 9 — 4枚を回す数字パズル</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --void:#0e1620;
+    --panel:#16202e;
+    --panel-2:#1b273a;
+    --line:#2a3a52;
+    --brass:#d0a852;
+    --brass-dim:#7d6836;
+    --teal:#5ac9b4;
+    --bone:#ece7db;
+    --ink:#16202e;
+    --muted:#8b9cb4;
+    --jp:"Zen Kaku Gothic New","Hiragino Sans","Hiragino Kaku Gothic ProN","Noto Sans JP",system-ui,sans-serif;
+    --num:"Space Grotesk","Helvetica Neue",Arial,system-ui,sans-serif;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    background:
+      radial-gradient(120% 90% at 50% -20%, #1c2a3d 0%, rgba(28,42,61,0) 60%),
+      var(--void);
+    color:var(--bone);
+    font-family:var(--jp);
+    -webkit-font-smoothing:antialiased;
+    min-height:100dvh;
+    display:flex;justify-content:center;
+    padding:28px 18px 48px;
+  }
+  .stage{width:100%;max-width:900px}
+
+  /* ---- header ---- */
+  header{margin-bottom:26px}
+  .eyebrow{
+    font-family:var(--num);font-size:11px;letter-spacing:.24em;text-transform:uppercase;
+    color:var(--brass);margin:0 0 6px;display:flex;align-items:center;gap:10px;
+  }
+  .eyebrow::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,var(--brass-dim),transparent)}
+  h1{
+    margin:0;font-family:var(--num);font-size:clamp(38px,8vw,64px);font-weight:700;
+    letter-spacing:.08em;line-height:1;color:var(--bone);
+    text-shadow:0 8px 26px rgba(0,0,0,.34);
+  }
+  h1 em{font-style:normal;color:var(--teal)}
+  .challenge-title{
+    margin:13px 0 6px;font-size:clamp(22px,4.5vw,32px);font-weight:700;
+    letter-spacing:.02em;line-height:1.25;
+  }
+  .challenge-title em{font-style:normal;color:var(--teal)}
+  .lede{margin:0;color:var(--muted);font-size:14px;line-height:1.8;max-width:44em}
+
+  /* ---- layout ---- */
+  .play{display:flex;gap:34px;align-items:flex-start;flex-wrap:wrap}
+  .board-wrap{flex:0 0 auto;width:min(100%,420px)}
+
+  /* ---- board ---- */
+  .board{
+    position:relative;width:100%;aspect-ratio:1;
+    background:linear-gradient(160deg,#1a2637,#121b28);
+    border:1px solid var(--line);
+    border-radius:10px;
+    box-shadow:0 24px 60px -30px #000, inset 0 1px 0 rgba(255,255,255,.05);
+    touch-action:none;                 /* 盤の上のスワイプは回転に使う */
+    user-select:none;-webkit-user-select:none;
+  }
+  .board::after{
+    content:"";position:absolute;inset:6px;border:1px solid rgba(208,168,82,.16);border-radius:6px;pointer-events:none;
+  }
+  .board::before{
+    content:"";position:absolute;inset:0;z-index:7;border-radius:10px;pointer-events:none;
+    background:radial-gradient(circle at var(--impact-x,50%) var(--impact-y,50%),
+      rgba(90,201,180,.38) 0,rgba(90,201,180,.14) 9%,transparent 28%);
+    opacity:0;
+  }
+  .board-help{margin:9px 0 0;text-align:center;color:var(--muted);font-size:12px;line-height:1.5}
+
+  .tile{
+    position:absolute;top:0;left:0;
+    display:flex;align-items:center;justify-content:center;
+    background:linear-gradient(175deg,#f3eee3 0%,#ddd5c4 100%);
+    color:var(--ink);
+    font-family:var(--num);font-weight:700;
+    border-radius:5px;
+    box-shadow:0 2px 0 #b3a992, 0 6px 12px -6px rgba(0,0,0,.7);
+    will-change:transform;cursor:grab;
+    transition:opacity .18s ease, box-shadow .18s ease, filter .18s ease;
+  }
+  .tile span{transform:translateY(-.02em)}
+  .tile.home::before{
+    content:"✓";position:absolute;right:5px;top:5px;width:16px;height:16px;border-radius:5px;
+    display:flex;align-items:center;justify-content:center;
+    background:var(--teal);color:var(--ink);
+    font-family:var(--num);font-size:11px;font-weight:700;line-height:1;
+    box-shadow:0 1px 3px rgba(0,0,0,.24);
+  }
+  .tile.home{background:linear-gradient(175deg,#f6f2e6 0%,#e4dfcd 100%)}
+  .board.dragging,.board.dragging .tile{cursor:grabbing}
+  .board.move-done{animation:boardSettle .4s cubic-bezier(.2,.8,.3,1)}
+  .board.move-done::before{animation:boardFlash .46s ease-out}
+  .tile.just-moved{animation:tileSettle .4s cubic-bezier(.16,.9,.3,1)}
+  .tile.home.landed-home::before{animation:homePop .5s cubic-bezier(.15,1.4,.3,1)}
+  .knob.impact .dot::before{animation:pivotImpact .46s ease-out}
+  @keyframes boardSettle{
+    0%{transform:scale(.975)}
+    34%{transform:scale(1.012);box-shadow:0 32px 76px -24px #000,inset 0 0 0 3px rgba(90,201,180,.48)}
+    100%{transform:scale(1)}
+  }
+  @keyframes boardFlash{0%{opacity:1;transform:scale(.68)}100%{opacity:0;transform:scale(1.15)}}
+  @keyframes tileSettle{
+    0%{filter:brightness(1.2);box-shadow:0 0 0 2px rgba(90,201,180,.7),0 4px 0 #b3a992,0 14px 22px -9px rgba(0,0,0,.9)}
+    55%{filter:brightness(1.08);box-shadow:0 0 0 1px rgba(90,201,180,.3),0 3px 0 #b3a992,0 10px 16px -8px rgba(0,0,0,.8)}
+  }
+  @keyframes homePop{
+    0%{transform:scale(.25) rotate(-18deg);opacity:0}
+    60%{transform:scale(1.25) rotate(4deg)}
+    100%{transform:scale(1) rotate(0);opacity:1}
+  }
+  @keyframes pivotImpact{
+    0%{box-shadow:0 0 0 0 rgba(90,201,180,.65)}
+    100%{transform:translate(-50%,-50%) scale(2.8);box-shadow:0 0 0 12px rgba(90,201,180,0);opacity:0}
+  }
+  .move-spark{
+    position:absolute;z-index:11;width:7px;height:7px;border-radius:2px;
+    left:var(--impact-x);top:var(--impact-y);pointer-events:none;
+    background:var(--teal);box-shadow:0 0 8px rgba(90,201,180,.8);
+    animation:moveSpark .5s cubic-bezier(.1,.7,.2,1) both;
+  }
+  .move-spark.brass{background:var(--brass);box-shadow:0 0 8px rgba(208,168,82,.8)}
+  @keyframes moveSpark{
+    0%{transform:translate(-50%,-50%) scale(1.2) rotate(0);opacity:1}
+    100%{transform:translate(calc(-50% + var(--spark-x)),calc(-50% + var(--spark-y))) scale(.2) rotate(180deg);opacity:0}
+  }
+  .board.previewing .tile{opacity:.5;filter:saturate(.5)}
+  .board.previewing .tile.lit{
+    opacity:1;filter:none;
+    box-shadow:0 0 0 2px var(--teal), 0 3px 0 #b3a992, 0 14px 22px -10px rgba(0,0,0,.85);
+  }
+  .board.quality-same .tile.lit{box-shadow:0 0 0 2px var(--brass),0 3px 0 #b3a992,0 14px 22px -10px rgba(0,0,0,.85)}
+  .board.quality-bad .tile.lit{box-shadow:0 0 0 2px #e47b71,0 3px 0 #b3a992,0 14px 22px -10px rgba(0,0,0,.85)}
+  .quality-label{
+    position:absolute;left:50%;bottom:12px;transform:translateX(-50%);
+    z-index:8;padding:5px 9px;border-radius:999px;background:rgba(14,22,32,.9);
+    border:1px solid var(--teal);color:var(--teal);
+    font-family:var(--num);font-size:11px;font-weight:700;letter-spacing:.04em;
+    opacity:0;transition:opacity .12s ease;pointer-events:none;white-space:nowrap;
+  }
+  .quality-label.show{opacity:1}
+  .quality-label.same{border-color:var(--brass);color:var(--brass)}
+  .quality-label.bad{border-color:#e47b71;color:#e47b71}
+  .celebration{position:absolute;inset:0;z-index:12;pointer-events:none;overflow:hidden;opacity:0}
+  .celebration.show{opacity:1}
+  .celebration-label{
+    position:absolute;left:50%;top:50%;transform:translate(-50%,-50%) scale(.65);
+    padding:10px 18px;border:1px solid var(--teal);border-radius:999px;
+    background:rgba(14,22,32,.92);color:var(--teal);
+    font-family:var(--num);font-size:clamp(24px,8vw,42px);font-weight:700;letter-spacing:.08em;
+    box-shadow:0 0 30px rgba(90,201,180,.35);
+  }
+  .celebration.show .celebration-label{animation:clearLabel 1.25s cubic-bezier(.2,.8,.25,1) both}
+  .confetti{
+    position:absolute;left:50%;top:50%;width:7px;height:11px;border-radius:2px;
+    background:var(--teal);opacity:0;
+  }
+  .confetti:nth-child(3n){background:var(--brass)}
+  .confetti:nth-child(3n+1){background:var(--bone)}
+  .celebration.show .confetti{animation:confettiBurst .9s ease-out var(--delay) both}
+  @keyframes clearLabel{
+    0%{transform:translate(-50%,-50%) scale(.65);opacity:0}
+    18%,70%{transform:translate(-50%,-50%) scale(1);opacity:1}
+    100%{transform:translate(-50%,-56%) scale(1.04);opacity:0}
+  }
+  @keyframes confettiBurst{
+    0%{transform:translate(-50%,-50%) scale(.5) rotate(0);opacity:1}
+    100%{transform:translate(calc(-50% + var(--x)),calc(-50% + var(--y))) rotate(var(--r));opacity:0}
+  }
+
+  /* ---- knob : 交点のつまみ（左半分=↺ / 右半分=↻） ---- */
+  .knob{
+    position:absolute;top:0;left:0;width:0;height:0;z-index:5;
+    --k:36px; --kp:0px; --kr:calc((var(--k) - var(--kp)*2)/2);
+  }
+  .knob .dot{
+    position:absolute;left:-6px;top:-6px;width:12px;height:12px;border-radius:50%;
+    background:var(--panel-2);border:1px solid rgba(208,168,82,.72);
+    box-shadow:0 0 0 3px rgba(14,22,32,.9);
+    transition:opacity .14s ease,border-color .14s ease,box-shadow .14s ease;pointer-events:none;
+  }
+  .knob .dot::before{
+    content:"";position:absolute;left:50%;top:50%;width:24px;height:24px;
+    transform:translate(-50%,-50%);border-radius:50%;
+    border:1px solid rgba(208,168,82,.18);
+    background:
+      linear-gradient(rgba(208,168,82,.22),rgba(208,168,82,.22)) center/1px 5px no-repeat,
+      linear-gradient(90deg,rgba(208,168,82,.22),rgba(208,168,82,.22)) center/5px 1px no-repeat;
+    transition:border-color .14s ease,transform .14s ease,background .14s ease;
+  }
+  .knob.candidate .dot{
+    border-color:var(--teal);
+    box-shadow:0 0 0 3px rgba(14,22,32,.9),0 0 12px rgba(90,201,180,.28);
+  }
+  .knob.candidate .dot::before{
+    transform:translate(-50%,-50%) scale(1.12);
+    border-color:rgba(90,201,180,.72);
+    background:
+      linear-gradient(var(--teal),var(--teal)) center/1px 5px no-repeat,
+      linear-gradient(90deg,var(--teal),var(--teal)) center/5px 1px no-repeat;
+  }
+  .knob.start-clue .dot{
+    border-color:var(--brass);
+    box-shadow:0 0 0 3px rgba(14,22,32,.9),0 0 16px rgba(208,168,82,.65);
+  }
+  .knob.start-clue .dot::before{
+    border-color:var(--brass);
+    animation:startClue 1s ease-in-out infinite alternate;
+  }
+  .knob.start-clue .half::before,.knob.start-clue .half span{opacity:.1}
+  .knob.start-clue.clue-cw .half.cw::before,
+  .knob.start-clue.clue-cw .half.cw span,
+  .knob.start-clue.clue-ccw .half.ccw::before,
+  .knob.start-clue.clue-ccw .half.ccw span{opacity:1}
+  .knob.start-clue.clue-cw .half.cw::before,
+  .knob.start-clue.clue-ccw .half.ccw::before{border-color:var(--brass)}
+  .knob.start-clue.clue-cw .half.cw span,
+  .knob.start-clue.clue-ccw .half.ccw span{color:var(--brass);font-size:1.35em;font-weight:700}
+  @keyframes startClue{to{transform:translate(-50%,-50%) scale(1.28);opacity:.55}}
+  .half{
+    position:absolute;top:calc(var(--k) / -2);height:var(--k);width:calc(var(--k) / 2);
+    padding:0;border:0;background:transparent;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;
+    font-size:calc(var(--k) * .36);line-height:1;
+  }
+  .half.ccw{left:calc(var(--k) / -2)}
+  .half.cw{left:0}
+  .half::before{
+    content:"";position:absolute;top:var(--kp);bottom:var(--kp);
+    background:var(--panel-2);border:1px solid var(--brass-dim);
+    opacity:0;transition:opacity .14s ease,background .14s ease,border-color .14s ease;
+  }
+  .half.ccw::before{left:var(--kp);right:0;border-right:0;border-radius:var(--kr) 0 0 var(--kr)}
+  .half.cw::before{left:0;right:var(--kp);border-left:0;border-radius:0 var(--kr) var(--kr) 0}
+  .half span{
+    position:relative;color:var(--brass);opacity:0;
+    transition:opacity .14s ease,color .14s ease;
+  }
+  .knob.hot .dot{opacity:0}
+  .knob.hot .half::before,.knob.hot .half span{opacity:1}
+  .half:hover::before,.half:focus-visible::before{background:#14313a;border-color:var(--teal)}
+  .half:hover span,.half:focus-visible span{color:var(--teal)}
+  .half:focus{outline:none}
+  .half:focus-visible{outline:2px solid var(--teal);outline-offset:3px;border-radius:4px}
+  .half:disabled{cursor:default}
+  /* AUTO再生中に「いま押している側」を光らせる */
+  .knob.press-cw .half.cw::before,.knob.press-ccw .half.ccw::before{background:#14313a;border-color:var(--teal)}
+  .knob.press-cw .half.cw span,.knob.press-ccw .half.ccw span{color:var(--teal)}
+  .board.quality-same .knob.press-cw .half.cw::before,.board.quality-same .knob.press-ccw .half.ccw::before{border-color:var(--brass)}
+  .board.quality-same .knob.press-cw .half.cw span,.board.quality-same .knob.press-ccw .half.ccw span{color:var(--brass)}
+  .board.quality-bad .knob.press-cw .half.cw::before,.board.quality-bad .knob.press-ccw .half.ccw::before{border-color:#e47b71}
+  .board.quality-bad .knob.press-cw .half.cw span,.board.quality-bad .knob.press-ccw .half.ccw span{color:#e47b71}
+  .knob.hinting .half::before,.knob.hinting .half span{opacity:.12}
+  .knob.hinting.press-cw .half.cw::before,
+  .knob.hinting.press-cw .half.cw span,
+  .knob.hinting.press-ccw .half.ccw::before,
+  .knob.hinting.press-ccw .half.ccw span{opacity:1}
+  .knob.hinting.press-cw .half.cw span,
+  .knob.hinting.press-ccw .half.ccw span{
+    font-size:1.35em;font-weight:700;
+    animation:hintPulse .8s ease-in-out infinite alternate;
+  }
+  .knob.evaluating .half::before,.knob.evaluating .half span{opacity:.1}
+  .knob.evaluating.press-cw .half.cw::before,
+  .knob.evaluating.press-cw .half.cw span,
+  .knob.evaluating.press-ccw .half.ccw::before,
+  .knob.evaluating.press-ccw .half.ccw span{opacity:1}
+  .knob.evaluating.press-cw .half.cw span,
+  .knob.evaluating.press-ccw .half.ccw span{font-size:1.35em;font-weight:700}
+  .knob.evaluating.cw-good .half.cw::before,.knob.evaluating.ccw-good .half.ccw::before{opacity:1;border-color:var(--teal)}
+  .knob.evaluating.cw-good .half.cw span,.knob.evaluating.ccw-good .half.ccw span{opacity:1;color:var(--teal)}
+  .knob.evaluating.cw-same .half.cw::before,.knob.evaluating.ccw-same .half.ccw::before{opacity:1;border-color:var(--brass)}
+  .knob.evaluating.cw-same .half.cw span,.knob.evaluating.ccw-same .half.ccw span{opacity:1;color:var(--brass)}
+  .knob.evaluating.cw-bad .half.cw::before,.knob.evaluating.ccw-bad .half.ccw::before{opacity:1;border-color:#e47b71}
+  .knob.evaluating.cw-bad .half.cw span,.knob.evaluating.ccw-bad .half.ccw span{opacity:1;color:#e47b71}
+  @keyframes hintPulse{to{transform:scale(1.25);text-shadow:0 0 10px rgba(90,201,180,.8)}}
+
+  .orbit{
+    position:absolute;top:0;left:0;border-radius:50%;
+    border:1px dashed rgba(90,201,180,.5);
+    opacity:0;transition:opacity .16s ease;pointer-events:none;z-index:1;
+  }
+  .orbit.show{opacity:1;animation:spin 9s linear infinite}
+  .orbit.show.rev{animation-direction:reverse}
+  .orbit.show.hinting{animation:none}
+  @keyframes spin{to{transform:rotate(360deg)}}
+
+  /* ---- panel ---- */
+  .panel{flex:1 1 280px;min-width:270px}
+  .stats{display:flex;gap:1px;background:var(--line);border:1px solid var(--line);border-radius:9px;overflow:hidden;margin-bottom:12px}
+  .stat{flex:1;background:var(--panel);padding:12px 12px 10px;text-align:left}
+  .stat .k{display:block;font-size:10px;letter-spacing:.16em;color:var(--muted);margin-bottom:5px}
+  .stat .v{display:block;font-family:var(--num);font-size:25px;font-weight:700;letter-spacing:.01em}
+  #fixed.full{color:var(--teal)}
+
+  .controls{display:grid;gap:12px}
+  .primary-actions,.stage-actions,.more-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  button.btn{
+    font-family:var(--jp);font-size:13px;font-weight:700;color:var(--bone);
+    background:var(--panel);border:1px solid var(--line);border-radius:7px;
+    min-height:44px;padding:10px 12px;cursor:pointer;text-align:center;
+    transition:border-color .15s ease,background .15s ease,color .15s ease;
+  }
+  button.btn:hover{border-color:var(--brass);background:var(--panel-2)}
+  button.btn:focus-visible{outline:2px solid var(--teal);outline-offset:2px}
+  button.btn:disabled{opacity:.4;cursor:default}
+  button.btn:disabled:hover{border-color:var(--line);background:var(--panel)}
+  #demoBtn{grid-column:auto;border-color:var(--brass-dim)}
+  #demoBtn.live{border-color:var(--teal);color:var(--teal);background:#14313a}
+  #hintBtn{grid-column:auto;border-color:rgba(90,201,180,.55)}
+  #hintBtn.live{border-color:var(--teal);color:var(--teal);background:#14313a}
+  #tutorialBtn{grid-column:auto;border-color:rgba(208,168,82,.45)}
+  #tutorialBtn.live{border-color:var(--teal);color:var(--teal);background:#14313a}
+  #nextBtn{grid-column:auto;border-color:var(--teal);color:var(--teal)}
+  #nextBtn:disabled{visibility:hidden}
+  #prevBtn{grid-column:auto}
+  #stageSelect{
+    grid-column:1 / -1;width:100%;padding:10px 11px;
+    border:1px solid var(--line);border-radius:7px;
+    background:var(--panel);color:var(--bone);
+    font-family:var(--jp);font-size:13px;cursor:pointer;
+  }
+  #stageSelect:focus-visible{outline:2px solid var(--teal);outline-offset:2px}
+  #stageSelect:disabled{opacity:.4;cursor:default}
+  .key{font-family:var(--num);font-size:10px;color:var(--muted);letter-spacing:.08em}
+
+  .status{
+    border:1px solid var(--line);border-left:3px solid var(--brass);border-radius:7px;
+    background:rgba(22,32,46,.65);padding:11px 13px;
+    font-size:14px;line-height:1.65;color:var(--bone);
+    height:calc(3.3em + 24px);overflow:hidden;margin:0 0 14px;
+  }
+  .status:not(.tutorial){display:flex;align-items:center}
+  .status.tutorial{height:auto;min-height:calc(3.3em + 24px);overflow:visible}
+  .status.win{border-color:var(--teal);color:var(--teal)}
+  .hint-title{color:var(--teal);font-weight:700;margin-bottom:5px}
+  .hint-steps{display:flex;flex-wrap:wrap;gap:5px;margin:4px 0 6px}
+  .hint-step{
+    display:inline-flex;align-items:center;gap:4px;padding:3px 7px;
+    border:1px solid var(--line);border-radius:4px;background:rgba(27,39,58,.7);
+    font-family:var(--num);font-size:12px;
+  }
+  .hint-step:first-child{border-color:var(--teal);color:var(--teal)}
+  .hint-reason{color:var(--muted);font-size:12px}
+
+  .stage-label{font-size:10px;letter-spacing:.16em;color:var(--muted);margin:0 0 6px}
+  .more{border-top:1px solid var(--line);padding-top:9px}
+  .more summary{cursor:pointer;color:var(--muted);font-size:12px;list-style:none;padding:4px 0}
+  .more summary::-webkit-details-marker{display:none}
+  .more summary::before{content:"+ ";color:var(--brass)}
+  .more[open] summary::before{content:"− "}
+  .more-actions{margin-top:8px}
+  .intro-overlay{
+    position:fixed;inset:0;z-index:40;display:flex;align-items:center;justify-content:center;
+    padding:20px;background:rgba(8,13,20,.76);backdrop-filter:blur(8px);
+    opacity:0;visibility:hidden;transition:opacity .24s ease,visibility .24s ease;
+  }
+  .intro-overlay.show{opacity:1;visibility:visible}
+  .intro-card{
+    width:min(100%,430px);padding:26px;border:1px solid var(--line);border-radius:14px;
+    background:linear-gradient(160deg,#1b283a,#121b28);
+    box-shadow:0 30px 80px -24px #000;text-align:left;
+  }
+  .intro-kicker{margin:0 0 8px;color:var(--teal);font-family:var(--num);font-size:11px;font-weight:700;letter-spacing:.18em}
+  .intro-card h2{margin:0 0 10px;font-size:25px;line-height:1.35}
+  .intro-card>p{margin:0;color:var(--muted);font-size:14px;line-height:1.8}
+  .intro-gesture{display:grid;grid-template-columns:138px 1fr;gap:16px;align-items:center;margin:16px 0}
+  .gesture-board{
+    position:relative;width:138px;height:138px;border:1px solid var(--line);border-radius:10px;
+    background:linear-gradient(160deg,#1a2637,#121b28);overflow:hidden;
+  }
+  .gesture-tile{
+    position:absolute;width:48px;height:48px;border-radius:5px;
+    display:grid;place-items:center;background:linear-gradient(175deg,#f3eee3,#ddd5c4);
+    color:var(--ink);font-family:var(--num);font-size:18px;font-weight:700;
+    box-shadow:0 2px 0 #b3a992;
+    transform:translate(var(--x0),var(--y0));
+    animation:gestureTile 2.8s cubic-bezier(.3,.05,.2,1) infinite;
+  }
+  .gesture-tile:nth-child(1){--x0:17px;--y0:17px;--x1:73px;--y1:17px}
+  .gesture-tile:nth-child(2){--x0:73px;--y0:17px;--x1:73px;--y1:73px}
+  .gesture-tile:nth-child(3){--x0:73px;--y0:73px;--x1:17px;--y1:73px}
+  .gesture-tile:nth-child(4){--x0:17px;--y0:73px;--x1:17px;--y1:17px}
+  .gesture-pivot{
+    position:absolute;left:64px;top:64px;width:10px;height:10px;border-radius:50%;
+    background:var(--panel-2);border:1px solid var(--teal);box-shadow:0 0 0 4px rgba(14,22,32,.9);z-index:3;
+  }
+  .gesture-orbit{
+    position:absolute;left:38px;top:38px;width:62px;height:62px;border:1px dashed rgba(90,201,180,.5);border-radius:50%;
+  }
+  .gesture-finger{
+    position:absolute;left:108px;top:30px;width:17px;height:17px;border-radius:50%;
+    background:var(--teal);box-shadow:0 0 0 5px rgba(90,201,180,.18),0 0 14px rgba(90,201,180,.5);
+    z-index:5;animation:gestureFinger 2.8s ease-in-out infinite;
+  }
+  .gesture-copy b{display:block;margin-bottom:5px;color:var(--bone);font-size:14px}
+  .gesture-copy span{display:block;color:var(--muted);font-size:12px;line-height:1.65}
+  .gesture-copy em{color:var(--teal);font-style:normal;font-weight:700}
+  @keyframes gestureTile{
+    0%,18%{transform:translate(var(--x0),var(--y0))}
+    55%,82%{transform:translate(var(--x1),var(--y1))}
+    100%{transform:translate(var(--x0),var(--y0))}
+  }
+  @keyframes gestureFinger{
+    0%,14%{transform:translate(0,0) scale(.8);opacity:0}
+    20%{transform:translate(0,0) scale(1);opacity:1}
+    55%,76%{transform:translate(0,62px) scale(1);opacity:1}
+    84%,100%{transform:translate(0,62px) scale(.8);opacity:0}
+  }
+  .intro-levels{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin:18px 0}
+  .intro-level{padding:10px 6px;border:1px solid var(--line);border-radius:7px;text-align:center;background:var(--panel)}
+  .intro-level b{display:block;color:var(--bone);font-family:var(--num);font-size:15px}
+  .intro-level span{display:block;margin-top:3px;color:var(--muted);font-size:11px}
+  #startBtn{
+    width:100%;min-height:52px;border:1px solid var(--teal);border-radius:8px;
+    background:#14313a;color:var(--teal);font-family:var(--jp);font-size:16px;font-weight:700;
+    cursor:pointer;box-shadow:0 0 24px rgba(90,201,180,.12);
+  }
+  #startBtn:hover{background:#19404a}
+  #startBtn:focus-visible{outline:2px solid var(--bone);outline-offset:3px}
+
+  /* ---- win ---- */
+  .board.won .tile{animation:pop .5s ease both}
+  @keyframes pop{
+    35%{box-shadow:0 0 0 2px var(--teal),0 2px 0 #b3a992,0 10px 20px -8px rgba(0,0,0,.8);filter:brightness(1.12)}
+  }
+
+  @media (max-width:720px){
+    body{padding:20px 14px 40px}
+    .play{gap:24px}
+    .board-wrap{width:100%;margin:0 auto}
+    .panel{min-width:0}
+    .intro-card{padding:22px}
+    .intro-gesture{grid-template-columns:118px 1fr;gap:12px}
+    .gesture-board{transform:scale(.855);transform-origin:left center;margin-right:-20px}
+    .intro-levels{grid-template-columns:1fr 1fr}
+  }
+  @media (pointer:coarse){
+    /* ホバーが無いので、分割された状態を最初から見せる */
+    .knob{--k:52px;--kp:7px}
+    .knob .dot{opacity:.9}
+    .knob .dot::before{border-color:rgba(208,168,82,.3)}
+    .knob .half::before,.knob .half span{opacity:1}
+  }
+  @media (prefers-reduced-motion:reduce){
+    .orbit.show{animation:none}
+    .board.won .tile{animation:none}
+    .celebration.show .confetti{display:none}
+    .celebration.show .celebration-label{animation:none;transform:translate(-50%,-50%);opacity:1}
+    .gesture-tile,.gesture-finger{animation:none}
+    .move-spark{display:none}
+    *{transition-duration:.01ms !important}
+  }
+</style>
+</head>
+<body>
+<div class="stage">
+  <header>
+    <p class="eyebrow">SHORT ROTATION PUZZLE</p>
+    <h1>ROTATE <em>9</em></h1>
+    <p class="challenge-title">あと<em><span id="headlinePar">1</span>手</em>で完成。</p>
+    <p class="lede">4枚ずつ回して、数字を1〜9の順に並べよう。</p>
+  </header>
+
+  <div class="play">
+    <div class="board-wrap">
+      <div class="board" id="board" aria-label="3かける3の回転パズル"></div>
+      <p class="board-help">交点の ↺ ↻ を押す、または盤面をドラッグ。90°回転で1手</p>
+    </div>
+
+    <div class="panel">
+      <div class="stats">
+        <div class="stat"><span class="k">手数</span><span class="v" id="moves">0</span></div>
+        <div class="stat"><span class="k">最短</span><span class="v" id="time">1手</span></div>
+        <div class="stat"><span class="k">問題</span><span class="v" id="fixed">1</span></div>
+      </div>
+
+      <p class="status" id="status"></p>
+
+      <div class="controls">
+        <div class="primary-actions">
+          <button class="btn" id="undoBtn">1手もどす <span class="key">U</span></button>
+          <button class="btn" id="resetBtn">この問題の最初から</button>
+          <button class="btn" id="hintBtn"><span id="hintLabel">HINTをON</span> <span class="key">H</span></button>
+          <button class="btn" id="demoBtn"><span id="demoLabel">答えを見る</span> <span class="key">G</span></button>
+        </div>
+
+        <div>
+          <p class="stage-label">問題を選ぶ</p>
+          <select id="stageSelect" aria-label="ステージを選ぶ">
+            <option value="1">問題 1 — 最短1手</option>
+            <option value="2">問題 2 — 最短1手</option>
+            <option value="3">問題 3 — 最短1手</option>
+            <option value="4">問題 4 — 最短2手</option>
+            <option value="5">問題 5 — 最短2手</option>
+            <option value="6">問題 6 — 最短2手</option>
+            <option value="7">問題 7 — 最短3手</option>
+            <option value="8">問題 8 — 最短3手</option>
+            <option value="9">問題 9 — 最短3手</option>
+            <option value="10">問題 10 — 最短4手</option>
+            <option value="11">問題 11 — 最短4手</option>
+            <option value="12">問題 12 — 最短4手</option>
+            <option value="13">問題 13 — 最短5手</option>
+            <option value="14">問題 14 — 最短5手</option>
+            <option value="15">問題 15 — 最短5手</option>
+          </select>
+        </div>
+        <div class="stage-actions">
+          <button class="btn" id="prevBtn">← 前の問題 <span class="key">P</span></button>
+          <button class="btn" id="nextBtn">次の問題へ → <span class="key">N</span></button>
+        </div>
+
+        <details class="more">
+          <summary>その他の機能</summary>
+          <div class="more-actions">
+            <button class="btn" id="mixBtn">別の問題 <span class="key">R</span></button>
+            <button class="btn" id="tutorialBtn"><span id="tutorialLabel">2枚交換レッスン</span> <span class="key">T</span></button>
+          </div>
+        </details>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="intro-overlay" id="introOverlay" role="dialog" aria-modal="true" aria-labelledby="introTitle">
+  <div class="intro-card">
+    <p class="intro-kicker">ROTATE 9</p>
+    <h2 id="introTitle">4枚を回して、数字をそろえる。</h2>
+    <p>交点の左右を押すと、まわりの4枚が90°回転します。この90°回転が「1手」。1〜9の順に並べばクリアです。</p>
+    <div class="intro-gesture" aria-label="盤面を交点のまわりへスワイプして4枚を回転">
+      <div class="gesture-board" aria-hidden="true">
+        <div class="gesture-tile">1</div>
+        <div class="gesture-tile">2</div>
+        <div class="gesture-tile">5</div>
+        <div class="gesture-tile">4</div>
+        <div class="gesture-orbit"></div>
+        <div class="gesture-pivot"></div>
+        <div class="gesture-finger"></div>
+      </div>
+      <div class="gesture-copy">
+        <b>盤面をスワイプ</b>
+        <span>交点のまわりへ<em>ひねる</em>と、4枚が指について回ります。</span>
+      </div>
+    </div>
+    <div class="intro-levels" aria-label="全15問の構成">
+      <div class="intro-level"><b>問題 1–3</b><span>最短1手</span></div>
+      <div class="intro-level"><b>問題 4–6</b><span>最短2手</span></div>
+      <div class="intro-level"><b>問題 7–9</b><span>最短3手</span></div>
+      <div class="intro-level"><b>問題 10–12</b><span>最短4手</span></div>
+      <div class="intro-level"><b>問題 13–15</b><span>最短5手</span></div>
+    </div>
+    <button id="startBtn" type="button">全15問のパズルを始める</button>
+  </div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  var board   = document.getElementById('board');
+  var elMoves = document.getElementById('moves');
+  var elTime  = document.getElementById('time');
+  var elFixed = document.getElementById('fixed');
+  var headlinePar = document.getElementById('headlinePar');
+  var elStat  = document.getElementById('status');
+  var undoBtn = document.getElementById('undoBtn');
+  var resetBtn = document.getElementById('resetBtn');
+  var mixBtn  = document.getElementById('mixBtn');
+  var hintBtn = document.getElementById('hintBtn');
+  var hintLabel = document.getElementById('hintLabel');
+  var demoBtn = document.getElementById('demoBtn');
+  var demoLabel = document.getElementById('demoLabel');
+  var tutorialBtn = document.getElementById('tutorialBtn');
+  var tutorialLabel = document.getElementById('tutorialLabel');
+  var nextBtn = document.getElementById('nextBtn');
+  var prevBtn = document.getElementById('prevBtn');
+  var stageSelect = document.getElementById('stageSelect');
+  var introOverlay = document.getElementById('introOverlay');
+  var startBtn = document.getElementById('startBtn');
+
+  var reduce = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+
+  /* ---------- 状態 ---------- */
+  var state = [];            // state[マス番号] = 駒ID(0..15)
+  var tiles = [];            // tiles[駒ID] = DOM
+  var history = [];          // [{p, cw}]
+  var moves = 0, busy = false, started = 0, timer = null, solved = false;
+  var stageNo = 1, puzzlePar = 1;
+  var clearedStages = new Set();
+  var stageRecords = Object.create(null);
+  var stageClueP = -1, puzzleFirstP = -1, puzzleFirstCw = true;
+  var qualityMode = false;
+  var introOn = false;
+  var audioContext = null;
+  var scrambleMoves = [];    // 完成形から最初の盤面までの手順
+  var demoOn = false, demoUsed = false, demoTimer = null;
+  var solutionCache = new Map();
+  var distanceCache = new Map();
+  var qualityReady = new Set();
+  var tutorialOn = false, tutorialStep = 0;
+  var tutorialSteps = [
+    { p:1, cw:true,  why:'まず右上を右へ。8と9を交換するため、中央を使って動かし始めます。' },
+    { p:2, cw:false, why:'次に左下を左へ。いったん多くの数字が崩れますが、これは交換の準備です。' },
+    { p:1, cw:false, why:'右上を左へ戻します。ここから周囲の数字を元へ戻す操作に入ります。' },
+    { p:2, cw:true,  why:'先ほどの左下を逆へ戻します。2手目で広げた崩れを回収します。' },
+    { p:3, cw:true,  why:'最後に右下を右へ。これで8と9だけが交換され、残り7枚は元通りです。' }
+  ];
+  var SIZE = 3, PIVOT_SIZE = SIZE - 1;
+  var TILE_COUNT = SIZE * SIZE, PIVOT_COUNT = PIVOT_SIZE * PIVOT_SIZE;
+  var KEYS = ['q','w','a','s'];
+  var NUMKEYS = ['7','8','4','5'];
+
+  /* ---------- 盤面の寸法 ---------- */
+  var CELL = 0, GAP = 0, PAD = 0;
+  function measure(){
+    var w = board.clientWidth;
+    GAP = Math.max(5, Math.round(w * 0.020));
+    PAD = Math.max(10, Math.round(w * 0.042));
+    CELL = (w - PAD * 2 - GAP * (SIZE - 1)) / SIZE;
+  }
+  function cellXY(i){
+    var r = Math.floor(i / SIZE), c = i % SIZE;
+    return { x: PAD + c * (CELL + GAP), y: PAD + r * (CELL + GAP) };
+  }
+  function cellCenter(i){ var p = cellXY(i); return { x: p.x + CELL/2, y: p.y + CELL/2 }; }
+  function knobXY(p){
+    var r = Math.floor(p / PIVOT_SIZE), c = p % PIVOT_SIZE;
+    return { x: PAD + (c + 1) * (CELL + GAP) - GAP/2, y: PAD + (r + 1) * (CELL + GAP) - GAP/2 };
+  }
+  function cellsOf(p){
+    var r = Math.floor(p / PIVOT_SIZE), c = p % PIVOT_SIZE;
+    return [ r*SIZE+c, r*SIZE+c+1, (r+1)*SIZE+c+1, (r+1)*SIZE+c ]; // 左上→右上→右下→左下
+  }
+
+  /* ---------- 生成 ---------- */
+  var knobs = [], orbits = [], qualityLabel = null, celebration = null;
+  function build(){
+    var frag = document.createDocumentFragment();
+    qualityLabel = document.createElement('div');
+    qualityLabel.className = 'quality-label';
+    frag.appendChild(qualityLabel);
+    celebration = document.createElement('div');
+    celebration.className = 'celebration';
+    celebration.innerHTML = '<div class="celebration-label">CLEAR!</div>';
+    for (var bit = 0; bit < 18; bit++){
+      var confetti = document.createElement('i');
+      var angle = bit * Math.PI * 2 / 18;
+      var distance = 105 + (bit % 4) * 18;
+      confetti.className = 'confetti';
+      confetti.style.setProperty('--x', Math.round(Math.cos(angle) * distance) + 'px');
+      confetti.style.setProperty('--y', Math.round(Math.sin(angle) * distance) + 'px');
+      confetti.style.setProperty('--r', (180 + bit * 47) + 'deg');
+      confetti.style.setProperty('--delay', ((bit % 5) * 22) + 'ms');
+      celebration.appendChild(confetti);
+    }
+    frag.appendChild(celebration);
+    for (var id = 0; id < TILE_COUNT; id++){
+      var t = document.createElement('div');
+      t.className = 'tile';
+      t.innerHTML = '<span>' + (id + 1) + '</span>';
+      tiles.push(t); frag.appendChild(t);
+    }
+    for (var p = 0; p < PIVOT_COUNT; p++){
+      var o = document.createElement('div');
+      o.className = 'orbit'; orbits.push(o); frag.appendChild(o);
+
+      var k = document.createElement('div');
+      k.className = 'knob'; k.dataset.p = p;
+      k.innerHTML =
+        '<span class="dot"></span>' +
+        '<button class="half ccw" type="button" aria-label="交点' + (p+1) + ' を左回り（反時計回り）にまわす"><span>\u21ba</span></button>' +
+        '<button class="half cw"  type="button" aria-label="交点' + (p+1) + ' を右回り（時計回り）にまわす"><span>\u21bb</span></button>';
+      knobs.push(k); frag.appendChild(k);
+    }
+    board.appendChild(frag);
+  }
+
+  function place(id, i){
+    var p = cellXY(i);
+    tiles[id].style.transform = 'translate(' + p.x + 'px,' + p.y + 'px)';
+  }
+  function relayout(){
+    measure();
+    var f = Math.round(CELL * 0.42);
+    for (var id = 0; id < TILE_COUNT; id++){
+      var t = tiles[id];
+      t.style.width = CELL + 'px'; t.style.height = CELL + 'px';
+      t.style.fontSize = f + 'px';
+    }
+    for (var i = 0; i < TILE_COUNT; i++) place(state[i], i);
+    // 4枚の中心が乗る円の半径（交点から駒の中心までの距離）
+    var R = Math.hypot((CELL + GAP) / 2, (CELL + GAP) / 2);
+    for (var p2 = 0; p2 < PIVOT_COUNT; p2++){
+      var k = knobXY(p2);
+      knobs[p2].style.transform = 'translate(' + k.x + 'px,' + k.y + 'px)';
+      var o = orbits[p2];
+      o.style.width = o.style.height = (R * 2) + 'px';
+      o.style.marginLeft = o.style.marginTop = (-R) + 'px';
+      o.style.left = k.x + 'px'; o.style.top = k.y + 'px';
+    }
+  }
+
+  function setKnobsEnabled(on){
+    knobs.forEach(function(k){
+      var b = k.querySelectorAll('button');
+      for (var i = 0; i < b.length; i++) b[i].disabled = !on;
+    });
+  }
+
+  /* ---------- 描画の更新 ---------- */
+  function refresh(){
+    if (state.length !== TILE_COUNT) return;
+    var n = 0;
+    for (var i = 0; i < TILE_COUNT; i++){
+      var home = state[i] === i;
+      if (home) n++;
+      tiles[state[i]].classList.toggle('home', home);
+    }
+    elFixed.textContent = tutorialOn ? 'LESSON' : stageNo;
+    elFixed.classList.toggle('full', solved);
+    elTime.textContent = tutorialOn ? '—' : puzzlePar + '手';
+    headlinePar.textContent = tutorialOn ? '5' : puzzlePar;
+    elMoves.textContent = moves;
+    undoBtn.disabled = history.length === 0 || busy || demoOn || tutorialOn;
+    resetBtn.disabled = busy || demoOn || tutorialOn;
+    hintBtn.disabled = busy || solved || demoOn || tutorialOn;
+    nextBtn.disabled = (!solved && !clearedStages.has(stageNo)) || tutorialOn || stageNo >= 15;
+    prevBtn.disabled = stageNo <= 1 || busy || demoOn || tutorialOn;
+    stageSelect.disabled = busy || demoOn || tutorialOn;
+    if (introOn){
+      undoBtn.disabled = resetBtn.disabled = hintBtn.disabled = mixBtn.disabled = demoBtn.disabled =
+        tutorialBtn.disabled = prevBtn.disabled = nextBtn.disabled = stageSelect.disabled = true;
+    }
+  }
+
+  /* 交点 p まわりに90°回した並びを返す（描画はしない） */
+  function permute(p, cw){
+    var cyc = cellsOf(p), next = state.slice();
+    for (var k = 0; k < 4; k++){
+      if (cw) next[cyc[(k+1) % 4]] = state[cyc[k]];
+      else    next[cyc[k]] = state[cyc[(k+1) % 4]];
+    }
+    return next;
+  }
+
+  /* 手を1つ記録する（手数と時計を進める） */
+  function logMove(p, cw){
+    history.push({ p: p, cw: cw });
+    if (moves === 0) clearStartClue();
+    moves++;
+  }
+
+  function clearStartClue(){
+    if (stageClueP >= 0) knobs[stageClueP].classList.remove('start-clue','clue-cw','clue-ccw');
+    stageClueP = -1;
+  }
+
+  /* ---------- 回転 ----------
+     opts.log   : history に積む
+     opts.count : 手数と時間を進める
+     opts.force : solved 状態でも動かす（AUTO再生用）
+     opts.fast  : AUTO再生用に少し速く
+     opts.after : 回り終わったときに呼ぶ                        */
+  function rotate(p, cw, opts){
+    opts = opts || {};
+    if (busy || (solved && !opts.force)) return;
+    var tutorialMove = tutorialOn && !opts.force;
+    if (tutorialMove && !tutorialAllows(p, cw, 1)) return;
+    var cyc = cellsOf(p);
+    var next = permute(p, cw);
+
+    var kc = knobXY(p);
+    var anims = [];
+    for (var j = 0; j < 4; j++){
+      var id = state[cyc[j]];
+      var from = cellCenter(cyc[j]);
+      var dx = from.x - kc.x, dy = from.y - kc.y;
+      var half = 0.7071067811865476;            // cos45 = sin45
+      var mx, my, ex, ey;
+      if (cw){ mx = dx*half - dy*half; my = dx*half + dy*half; ex = -dy; ey = dx; }
+      else   { mx = dx*half + dy*half; my = -dx*half + dy*half; ex = dy; ey = -dx; }
+      anims.push({
+        el: tiles[id],
+        a: 'translate(' + (from.x - CELL/2) + 'px,' + (from.y - CELL/2) + 'px)',
+        b: 'translate(' + (kc.x + mx - CELL/2) + 'px,' + (kc.y + my - CELL/2) + 'px)',
+        c: 'translate(' + (kc.x + ex - CELL/2) + 'px,' + (kc.y + ey - CELL/2) + 'px)'
+      });
+    }
+
+    state = next;
+    for (var m = 0; m < anims.length; m++) anims[m].el.style.transform = anims[m].c;
+
+    if (opts.log && opts.count) logMove(p, cw);
+    else if (opts.log) history.push({ p: p, cw: cw });
+
+    var dur = reduce ? 1 : (opts.fast ? 140 : 190);
+    busy = true;
+    var done = 0;
+    anims.forEach(function(o){
+      var an = o.el.animate(
+        [{ transform: o.a }, { transform: o.b }, { transform: o.c }],
+        { duration: dur, easing: 'cubic-bezier(.35,.05,.2,1)' }
+      );
+      an.onfinish = an.oncancel = function(){
+        if (++done === 4){
+          busy = false; moveFeedback(cyc, p); refresh(); check();
+          if (tutorialMove) advanceTutorial();
+          if (opts.after) opts.after();
+        }
+      };
+    });
+    refresh();
+  }
+
+  function check(){
+    if (solved) return;
+    for (var i = 0; i < TILE_COUNT; i++) if (state[i] !== i) return;
+    if (introOn) return;
+    solved = true;
+    clearedStages.add(stageNo);
+    updateStageOptions();
+    var allClear = clearedStages.size === 15;
+    winFeedback(allClear);
+    clearInterval(timer);
+    board.classList.add('won');
+    tiles.forEach(function(t, i){ t.style.animationDelay = (i * 26) + 'ms'; });
+    setKnobsEnabled(false);
+    refresh();
+    if (tutorialOn) return;
+    if (allClear){
+      nextBtn.textContent = '全15問クリア';
+      say('全問クリア！ 15問すべて完成しました。お見事です。', true);
+    } else if (stageNo >= 15){
+      say('クリア！ プルダウンから未クリアの問題に挑戦しましょう。', true);
+    } else if (demoOn || demoUsed) say('答え合わせ完了。最短' + puzzlePar + '手でした。', true);
+    else if (moves === puzzlePar) say('最短手数でクリア！ 「次の問題へ」で進みましょう。', true);
+    else say('クリア！ ' + moves + '手で完成しました。「次の問題へ」で進みましょう。', true);
+  }
+
+  /* ---------- 1〜3手の問題を作る ---------- */
+  function scramble(n, useSaved){
+    stopDemo(true);
+    if (celebration) celebration.classList.remove('show');
+    qualityMode = false;
+    hintBtn.classList.remove('live');
+    hintLabel.textContent = 'HINTをON';
+    clearInterval(timer); timer = null; started = 0;
+    board.classList.remove('won');
+    tiles.forEach(function(t){ t.style.animation = 'none'; void t.offsetWidth; t.style.animation = ''; });
+    setKnobsEnabled(true);
+    solved = false; moves = 0; history = []; busy = false; demoUsed = false;
+    clearStartClue();
+    puzzlePar = Math.max(1, Math.min(5, n || puzzlePar));
+    stageSelect.value = String(stageNo);
+    nextBtn.innerHTML = '次の問題へ → <span class="key">N</span>';
+    var chosen = useSaved && stageRecords[stageNo];
+    if (!chosen){
+      var root = [], i;
+      for (i = 0; i < TILE_COUNT; i++) root[i] = i;
+      var frontier = [{ s:root, path:[] }];
+      var layers = [frontier];
+      var seen = new Map([[root.join(''), 0]]);
+      var layerThree = [];
+      function fixedCount(s){
+        var count = 0;
+        for (var pos = 0; pos < TILE_COUNT; pos++) if (s[pos] === pos) count++;
+        return count;
+      }
+      for (var depth = 0; depth < puzzlePar; depth++){
+        var nextLayer = [];
+        frontier.forEach(function(node){
+          for (var p = 0; p < PIVOT_COUNT; p++){
+            for (var dir = 0; dir < 2; dir++){
+              var cw = dir === 0;
+              var next = permuteArray(node.s, p, cw);
+              var key = next.join('');
+              if (seen.has(key)) continue;
+              seen.set(key, depth + 1);
+              nextLayer.push({ s:next, path:node.path.concat({ p:p, cw:cw }) });
+            }
+          }
+        });
+        frontier = nextLayer;
+        layers.push(nextLayer);
+        if (depth + 1 === 3) layerThree = nextLayer.slice();
+      }
+      function approachable(nodes, targetDepth, allowedNext){
+        return nodes.filter(function(node){
+          var before = fixedCount(node.s), improvingMoves = 0, visibleAnswers = 0;
+          for (var p = 0; p < PIVOT_COUNT; p++){
+            for (var dir = 0; dir < 2; dir++){
+              var candidate = permuteArray(node.s, p, dir === 0);
+              if (fixedCount(candidate) > before){
+                improvingMoves++;
+                var candidateKey = candidate.join('');
+                if (seen.get(candidateKey) === targetDepth &&
+                    (!allowedNext || allowedNext.has(candidateKey))) visibleAnswers++;
+              }
+            }
+          }
+          return improvingMoves === 1 && visibleAnswers === 1;
+        });
+      }
+      var curatedThree = approachable(layerThree, 2);
+      if (puzzlePar === 3) frontier = curatedThree;
+      if (puzzlePar >= 4){
+        var desiredChoices = (stageNo === 12 || stageNo >= 14) ? 2 : 1;
+        var smooth = [new Set([root.join('')])];
+        for (var smoothDepth = 1; smoothDepth < puzzlePar; smoothDepth++){
+          var smoothSet = new Set();
+          layers[smoothDepth].forEach(function(node){
+            var before = fixedCount(node.s), valid = 0;
+            for (var p = 0; p < PIVOT_COUNT; p++){
+              for (var dir = 0; dir < 2; dir++){
+                var candidate = permuteArray(node.s, p, dir === 0);
+                var candidateKey = candidate.join('');
+                if (fixedCount(candidate) > before &&
+                    seen.get(candidateKey) === smoothDepth - 1 &&
+                    smooth[smoothDepth - 1].has(candidateKey)) valid++;
+              }
+            }
+            if (valid === 1) smoothSet.add(node.s.join(''));
+          });
+          smooth.push(smoothSet);
+        }
+        frontier = frontier.filter(function(node){
+          var before = fixedCount(node.s), improvingMoves = 0, valid = 0;
+          for (var p = 0; p < PIVOT_COUNT; p++){
+            for (var dir = 0; dir < 2; dir++){
+              var candidate = permuteArray(node.s, p, dir === 0);
+              var candidateKey = candidate.join('');
+              if (fixedCount(candidate) > before){
+                improvingMoves++;
+                if (seen.get(candidateKey) === puzzlePar - 1 &&
+                    smooth[puzzlePar - 1].has(candidateKey)) valid++;
+              }
+            }
+          }
+          return improvingMoves === desiredChoices && valid === 1;
+        });
+        var usedSameDepth = new Set();
+        Object.keys(stageRecords).forEach(function(stageKey){
+          var stageNumber = Number(stageKey);
+          var sameGroup = (puzzlePar === 4 && stageNumber >= 10 && stageNumber <= 12) ||
+                          (puzzlePar === 5 && stageNumber >= 13);
+          if (sameGroup && stageNumber !== stageNo)
+            usedSameDepth.add(stageRecords[stageKey].s.join(''));
+        });
+        var unusedSameDepth = frontier.filter(function(node){ return !usedSameDepth.has(node.s.join('')); });
+        if (unusedSameDepth.length) frontier = unusedSameDepth;
+      }
+      chosen = frontier[Math.floor(Math.random() * frontier.length)];
+      stageRecords[stageNo] = { s:chosen.s.slice(), path:chosen.path.slice() };
+    }
+    state = chosen.s.slice();
+    scrambleMoves = chosen.path.slice();
+    puzzleFirstP = -1;
+
+    relayout();
+    refresh();
+    say('問題 ' + stageNo + ' — 最短' + puzzlePar + '手。' +
+      (puzzlePar >= 3
+        ? '回した後の4枚を想像して、次の1手を選んでください。'
+        : '回した後の4枚を想像してみてください。'));
+  }
+
+  /* ---------- 時間 ---------- */
+  function elapsed(){ return started ? Math.floor((Date.now() - started) / 1000) : 0; }
+  function fmt(s){ return Math.floor(s / 60) + ':' + ('0' + (s % 60)).slice(-2); }
+  function tick(){ elTime.textContent = fmt(elapsed()); }
+
+  function say(text, win){
+    elStat.textContent = text;
+    elStat.classList.toggle('win', !!win);
+  }
+
+  function playMoveSound(homeHits){
+    if (introOn || demoOn) return;
+    var AudioCtor = window.AudioContext || window.webkitAudioContext;
+    if (!AudioCtor) return;
+    try {
+      audioContext = audioContext || new AudioCtor();
+      if (audioContext.state === 'suspended') audioContext.resume();
+      var now = audioContext.currentTime;
+      var gain = audioContext.createGain();
+      var low = audioContext.createOscillator();
+      var high = audioContext.createOscillator();
+      gain.gain.setValueAtTime(.0001, now);
+      gain.gain.exponentialRampToValueAtTime(.12, now + .008);
+      gain.gain.exponentialRampToValueAtTime(.0001, now + .12);
+      low.type = 'triangle';
+      low.frequency.setValueAtTime(homeHits ? 180 : 135, now);
+      low.frequency.exponentialRampToValueAtTime(homeHits ? 260 : 190, now + .08);
+      high.type = 'sine';
+      high.frequency.setValueAtTime(homeHits ? 720 : 470, now);
+      high.frequency.exponentialRampToValueAtTime(homeHits ? 1040 : 620, now + .09);
+      low.connect(gain); high.connect(gain); gain.connect(audioContext.destination);
+      low.start(now); high.start(now);
+      low.stop(now + .13); high.stop(now + .13);
+    } catch (e) {}
+  }
+
+  function moveBurst(){
+    for (var i = 0; i < 12; i++){
+      var spark = document.createElement('i');
+      var angle = Math.PI * 2 * i / 12 + (i % 2 ? .12 : 0);
+      var distance = 34 + (i % 3) * 12;
+      spark.className = 'move-spark' + (i % 3 === 0 ? ' brass' : '');
+      spark.style.setProperty('--spark-x', Math.cos(angle) * distance + 'px');
+      spark.style.setProperty('--spark-y', Math.sin(angle) * distance + 'px');
+      board.appendChild(spark);
+      setTimeout(function(node){ node.remove(); }, 520, spark);
+    }
+  }
+
+  function moveFeedback(cyc, p){
+    board.classList.remove('move-done');
+    for (var i = 0; i < cyc.length; i++)
+      tiles[state[cyc[i]]].classList.remove('just-moved', 'landed-home');
+    knobs[p].classList.remove('impact');
+    var impact = knobXY(p);
+    board.style.setProperty('--impact-x', (impact.x / board.clientWidth * 100) + '%');
+    board.style.setProperty('--impact-y', (impact.y / board.clientHeight * 100) + '%');
+    void board.offsetWidth;
+    board.classList.add('move-done');
+    var homeHits = 0;
+    for (var j = 0; j < cyc.length; j++){
+      tiles[state[cyc[j]]].classList.add('just-moved');
+      if (state[cyc[j]] === cyc[j]){
+        tiles[state[cyc[j]]].classList.add('landed-home');
+        homeHits++;
+      }
+    }
+    knobs[p].classList.add('impact');
+    moveBurst();
+    playMoveSound(homeHits);
+    if (navigator.vibrate) navigator.vibrate(homeHits ? [18,22,32] : [14,18,20]);
+    setTimeout(function(){
+      board.classList.remove('move-done');
+      tiles.forEach(function(t){ t.classList.remove('just-moved', 'landed-home'); });
+      knobs[p].classList.remove('impact');
+    }, 520);
+  }
+
+  function winFeedback(allClear){
+    if (!celebration) return;
+    celebration.querySelector('.celebration-label').textContent = allClear && !tutorialOn ? 'ALL CLEAR!' : 'CLEAR!';
+    celebration.classList.remove('show');
+    void celebration.offsetWidth;
+    celebration.classList.add('show');
+    if (navigator.vibrate) navigator.vibrate([28,35,65]);
+    setTimeout(function(){ celebration.classList.remove('show'); }, 1300);
+  }
+
+  /* ---------- プレビュー ---------- */
+  function preview(p, on, cw){
+    var cyc = cellsOf(p);
+    board.classList.toggle('previewing', on);
+    for (var j = 0; j < 4; j++) tiles[state[cyc[j]]].classList.toggle('lit', on);
+    orbits[p].classList.toggle('show', on);
+    orbits[p].classList.toggle('rev', !cw);
+    knobs[p].classList.toggle('hot', on);
+  }
+  function clearPreview(){
+    board.classList.remove('previewing','quality-good','quality-same','quality-bad');
+    hoverPreviewP = -1;
+    if (qualityLabel) qualityLabel.className = 'quality-label';
+    tiles.forEach(function(t){ t.classList.remove('lit'); });
+    orbits.forEach(function(o){ o.classList.remove('show'); });
+    knobs.forEach(function(k){
+      k.classList.remove('hot','press-cw','press-ccw','hinting','evaluating',
+        'cw-good','cw-same','cw-bad','ccw-good','ccw-same','ccw-bad');
+    });
+    orbits.forEach(function(o){ o.classList.remove('hinting'); });
+  }
+
+  /* ---------- ドラッグ（スワイプ）で回す ----------
+     盤のどこをつかんでも、いちばん近い交点が軸になる。
+     指の回転角ぶんだけ4枚が何周でも追従し、離すと90°単位に吸着する。 */
+  var drag = null;
+
+  function localPoint(e){
+    var r = board.getBoundingClientRect();
+    return { x: e.clientX - r.left, y: e.clientY - r.top };
+  }
+  function nearestPivot(x, y){
+    var best = 0, bd = Infinity;
+    for (var p = 0; p < PIVOT_COUNT; p++){
+      var k = knobXY(p), d = (k.x - x) * (k.x - x) + (k.y - y) * (k.y - y);
+      if (d < bd){ bd = d; best = p; }
+    }
+    return best;
+  }
+  var candidatePivot = -1;
+  var hoverPreviewP = -1, hoverPreviewCw = true;
+  function showCandidate(p){
+    if (candidatePivot === p) return;
+    if (candidatePivot >= 0) knobs[candidatePivot].classList.remove('candidate');
+    candidatePivot = p;
+    if (p >= 0) knobs[p].classList.add('candidate');
+  }
+  function showMoveQuality(p, cw){
+    var currentKey = state.join('');
+    var nextKey = permuteArray(state, p, cw).join('');
+    var otherKey = permuteArray(state, p, !cw).join('');
+    if (!distanceCache.has(currentKey) || !distanceCache.has(nextKey) || !distanceCache.has(otherKey)) autoQueue();
+    var before = distanceCache.get(currentKey);
+    var after = distanceCache.get(nextKey);
+    if (after == null){ after = before + 1; distanceCache.set(nextKey, after); }
+    var otherAfter = distanceCache.get(otherKey);
+    if (otherAfter == null){ otherAfter = before + 1; distanceCache.set(otherKey, otherAfter); }
+    var kind = after < before ? 'good' : (after === before ? 'same' : 'bad');
+    var otherKind = otherAfter < before ? 'good' : (otherAfter === before ? 'same' : 'bad');
+    knobs[p].classList.add('evaluating');
+    knobs[p].classList.add((cw ? 'cw-' : 'ccw-') + kind);
+    knobs[p].classList.add((cw ? 'ccw-' : 'cw-') + otherKind);
+    board.classList.add('quality-' + kind);
+    qualityLabel.className = 'quality-label show' + (kind === 'good' ? '' : ' ' + kind);
+    var direction = cw ? '↻ 右回り' : '↺ 左回り';
+    qualityLabel.textContent = direction + (kind === 'good'
+      ? 'で近づく  ' + before + ' → ' + after
+      : (kind === 'same' ? 'では変わらない  ' + before + ' → ' + after : 'では遠ざかる  ' + before + ' → ' + after));
+  }
+  function xf(it, deg, kc){
+    var rad = deg * Math.PI / 180, c = Math.cos(rad), sn = Math.sin(rad);
+    var nx = it.ox * c - it.oy * sn, ny = it.ox * sn + it.oy * c;
+    return 'translate(' + (kc.x + nx - CELL/2) + 'px,' + (kc.y + ny - CELL/2) + 'px)';
+  }
+  function angleAt(pt, kc){ return Math.atan2(pt.y - kc.y, pt.x - kc.x) * 180 / Math.PI; }
+
+  board.addEventListener('pointerdown', function(e){
+    if (introOn || busy || solved || demoOn || drag) return;
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
+    if (e.target.closest && e.target.closest('.half')) return;   // つまみのボタンは従来どおり
+
+    var pt = localPoint(e);
+    var p = nearestPivot(pt.x, pt.y), kc = knobXY(p);
+    if (Math.hypot(pt.x - kc.x, pt.y - kc.y) < 10) return;       // 軸のど真ん中は角度が定まらない
+
+    var cyc = cellsOf(p), items = [];
+    for (var j = 0; j < 4; j++){
+      var c = cellCenter(cyc[j]);
+      items.push({ el: tiles[state[cyc[j]]], ox: c.x - kc.x, oy: c.y - kc.y });
+    }
+    var a = angleAt(pt, kc);
+    drag = { p: p, kc: kc, items: items, lastAngle: a, deg: 0, t0: Date.now(), id: e.pointerId };
+    showCandidate(-1);
+    try { board.setPointerCapture(e.pointerId); } catch (_) {}
+    board.classList.add('dragging');
+    preview(p, true, true);
+    e.preventDefault();
+  });
+
+  board.addEventListener('pointermove', function(e){
+    if (!drag){
+      if (e.pointerType !== 'touch' && !busy && !solved && !demoOn && !tutorialOn){
+        var hoverPt = localPoint(e);
+        var hoverP = nearestPivot(hoverPt.x, hoverPt.y);
+        var hoverCw = hoverPt.x >= knobXY(hoverP).x;
+        if (hoverP !== hoverPreviewP || hoverCw !== hoverPreviewCw){
+          clearPreview();
+          showCandidate(hoverP);
+          preview(hoverP, true, hoverCw);
+          knobs[hoverP].classList.add(hoverCw ? 'press-cw' : 'press-ccw');
+          if (qualityMode) showMoveQuality(hoverP, hoverCw);
+          hoverPreviewP = hoverP;
+          hoverPreviewCw = hoverCw;
+        }
+      }
+      return;
+    }
+    if (e.pointerId !== drag.id) return;
+    var a = angleAt(localPoint(e), drag.kc);
+    var delta = a - drag.lastAngle;
+    while (delta > 180) delta -= 360;
+    while (delta < -180) delta += 360;
+    drag.deg += delta;
+    drag.lastAngle = a;
+    var d = drag.deg;
+    for (var i = 0; i < drag.items.length; i++)
+      drag.items[i].el.style.transform = xf(drag.items[i], d, drag.kc);
+
+    var cw = d >= 0, shown = Math.abs(d) > 5;
+    orbits[drag.p].classList.toggle('rev', !cw);
+    knobs[drag.p].classList.toggle('press-cw',  cw && shown);
+    knobs[drag.p].classList.toggle('press-ccw', !cw && shown);
+  });
+
+  function endDrag(e){
+    if (!drag || (e && e.pointerId !== drag.id)) return;
+    var dg = drag, d = dg.deg, ms = Date.now() - dg.t0;
+    drag = null;
+    board.classList.remove('dragging');
+    try { board.releasePointerCapture(dg.id); } catch (_) {}
+
+    // 最寄りの90°へ吸着。最初の1手だけは従来どおり、素早いフリックも拾う。
+    var turns = Math.round(d / 90);
+    if (turns === 0 && Math.abs(d) >= 14 && ms < 300) turns = d >= 0 ? 1 : -1;
+    var tutorialAccepted = tutorialOn && turns !== 0 && tutorialAllows(dg.p, turns > 0, Math.abs(turns));
+    if (tutorialOn && turns !== 0 && !tutorialAccepted) turns = 0;
+    var target = turns * 90;
+    var cyc = cellsOf(dg.p);
+
+    if (turns){
+      var cw = turns > 0;
+      for (var turn = 0; turn < Math.abs(turns); turn++){
+        state = permute(dg.p, cw);
+        logMove(dg.p, cw);
+      }
+    }
+
+    busy = true;
+    var dur = reduce ? 1 : Math.max(90, Math.round(Math.abs(target - d) * 1.7));
+    var frames = [], steps = 4, i;
+    for (i = 0; i <= steps; i++) frames.push(d + (target - d) * i / steps);
+
+    var done = 0;
+    dg.items.forEach(function(it){
+      var ks = frames.map(function(a){ return { transform: xf(it, a, dg.kc) }; });
+      it.el.style.transform = xf(it, target, dg.kc);
+      var an = it.el.animate(ks, { duration: dur, easing: 'cubic-bezier(.2,.7,.3,1)' });
+      an.onfinish = an.oncancel = function(){
+        if (++done === 4){
+          busy = false;
+          for (var q = 0; q < 4; q++) place(state[cyc[q]], cyc[q]);   // 誤差を残さない
+          clearPreview();
+          moveFeedback(cyc, dg.p); refresh(); check();
+          if (tutorialAccepted) advanceTutorial();
+          else if (tutorialOn) renderTutorial();
+        }
+      };
+    });
+    refresh();
+  }
+  board.addEventListener('pointerup', endDrag);
+  board.addEventListener('pointercancel', endDrag);
+  board.addEventListener('pointerleave', function(){
+    if (!drag){
+      clearPreview();
+      showCandidate(-1);
+      hoverPreviewP = -1;
+    }
+  });
+
+  /* ---------- 入力 ---------- */
+  var hovered = -1;
+  function bindKnobs(){
+    knobs.forEach(function(k, p){
+      var halves = k.querySelectorAll('button');
+      for (var h = 0; h < halves.length; h++){
+        (function(btn, cw){
+          btn.addEventListener('mouseenter', function(){ if (tutorialOn) return; hovered = p; preview(p, true, cw); });
+          btn.addEventListener('mouseleave', function(){ hovered = -1; if (tutorialOn) renderTutorial(); else clearPreview(); });
+          btn.addEventListener('focus',      function(){ if (tutorialOn) return; hovered = p; preview(p, true, cw); });
+          btn.addEventListener('blur',       function(){ hovered = -1; if (tutorialOn) renderTutorial(); else clearPreview(); });
+          btn.addEventListener('click', function(e){
+            e.preventDefault();
+            if (demoOn) return;
+            rotate(p, cw, { log: true, count: true });
+            if (tutorialOn){
+              if (!busy) renderTutorial();
+            } else preview(p, true, cw);     // 回したあとも軌道と光を残す
+          });
+          btn.addEventListener('contextmenu', function(e){ e.preventDefault(); });
+        })(halves[h], halves[h].classList.contains('cw'));
+      }
+    });
+  }
+
+  document.addEventListener('keydown', function(e){
+    if (introOn) return;
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+    var key = e.key.toLowerCase();
+    var i = KEYS.indexOf(key);
+    if (i < 0) i = NUMKEYS.indexOf(e.key);
+    if (i >= 0){ e.preventDefault(); if (!demoOn) rotate(i, !e.shiftKey, { log: true, count: true }); return; }
+    if (key === 'u'){ e.preventDefault(); undo(); }
+    else if (key === 'r'){ e.preventDefault(); if (tutorialOn) stopTutorial(true); else scramble(); }
+    else if (key === 'h'){ e.preventDefault(); showHint(); }
+    else if (key === 'g' || key === 'd'){ e.preventDefault(); toggleDemo(); }
+    else if (key === 't'){ e.preventDefault(); if (tutorialOn) stopTutorial(true); else startTutorial(); }
+    else if (key === 'n' && solved && !tutorialOn){ e.preventDefault(); nextPuzzle(); }
+    else if (key === 'p' && stageNo > 1 && !tutorialOn){ e.preventDefault(); prevPuzzle(); }
+  });
+  /* ---------- AUTO ----------
+     3×3では全状態を現実的な時間で探索できる。
+     完成形から幅優先探索し、現在盤面へ至る本当の最短経路を逆向きに返す。 */
+  function permuteArray(src, p, cw){
+    var cyc = cellsOf(p), next = src.slice();
+    for (var k = 0; k < 4; k++){
+      if (cw) next[cyc[(k+1) % 4]] = src[cyc[k]];
+      else    next[cyc[k]] = src[cyc[(k+1) % 4]];
+    }
+    return next;
+  }
+
+  function autoQueue(){
+    var target = state.join('');
+    if (solutionCache.has(target) && qualityReady.has(target)) return solutionCache.get(target).slice();
+    var solvedState = [], id;
+    for (id = 0; id < TILE_COUNT; id++) solvedState[id] = id;
+    if (target === solvedState.join('')) return [];
+
+    var states = [solvedState], parent = [-1], viaP = [-1], viaCw = [false], depth = [0];
+    var seen = new Map([[solvedState.join(''), 0]]);
+    var head = 0, found = -1, targetDepth = -1;
+
+    while (head < states.length){
+      if (targetDepth >= 0 && depth[head] >= targetDepth) break;
+      var src = states[head];
+      for (var p = 0; p < PIVOT_COUNT; p++){
+        for (var dir = 0; dir < 2; dir++){
+          var cw = dir === 0;
+          var next = permuteArray(src, p, cw);
+          var key = next.join('');
+          if (seen.has(key)) continue;
+          var at = states.length;
+          seen.set(key, at);
+          states.push(next); parent.push(head); viaP.push(p); viaCw.push(cw); depth.push(depth[head] + 1);
+          if (key === target){ found = at; targetDepth = depth[at]; }
+        }
+      }
+      head++;
+    }
+    seen.forEach(function(at, key){ distanceCache.set(key, depth[at]); });
+    qualityReady.add(target);
+
+    var q = [];
+    while (found > 0){
+      q.push({ p: viaP[found], cw: !viaCw[found] });
+      found = parent[found];
+    }
+    var cacheState = state.slice();
+    for (var step = 0; step <= q.length; step++){
+      solutionCache.set(cacheState.join(''), q.slice(step));
+      if (step < q.length) cacheState = permuteArray(cacheState, q[step].p, q[step].cw);
+    }
+    return q;
+  }
+
+  function toggleDemo(){
+    if (tutorialOn) return;
+    if (demoOn) stopDemo();
+    else startDemo();
+  }
+
+  function showHint(){
+    if (busy || solved || demoOn || tutorialOn) return;
+    qualityMode = !qualityMode;
+    clearPreview();
+    hintBtn.classList.toggle('live', qualityMode);
+    hintLabel.textContent = qualityMode ? 'HINTをOFF' : 'HINTをON';
+    say(qualityMode
+      ? '距離表示をONにしました。盤上をマウスで探ると、緑・黄・赤で候補手を評価します。'
+      : '距離表示をOFFにしました。ここからは盤面だけを見て考えてみてください。');
+  }
+
+  function tutorialAllows(p, cw, turns){
+    if (!tutorialOn || tutorialStep >= tutorialSteps.length) return false;
+    var expected = tutorialSteps[tutorialStep];
+    if (turns === 1 && p === expected.p && cw === expected.cw) return true;
+    say('今は手順' + (tutorialStep + 1) + 'です。点滅している交点の「' +
+      (expected.cw ? '↻' : '↺') + '」を90°だけ回してみてください。');
+    return false;
+  }
+
+  function renderTutorial(){
+    if (!tutorialOn || tutorialStep >= tutorialSteps.length) return;
+    var step = tutorialSteps[tutorialStep];
+    var names = ['左上','右上','左下','右下'];
+    clearPreview();
+    preview(step.p, true, step.cw);
+    knobs[step.p].classList.add('hinting');
+    knobs[step.p].classList.add(step.cw ? 'press-cw' : 'press-ccw');
+    var chips = tutorialSteps.map(function(s, i){
+      return '<span class="hint-step"' + (i < tutorialStep ? ' style="opacity:.35"' : '') + '>' +
+        (i + 1) + ' ' + names[s.p] + ' ' + (s.cw ? '↻' : '↺') + '</span>';
+    });
+    elStat.classList.add('tutorial');
+    elStat.classList.remove('win');
+    elStat.innerHTML =
+      '<div class="hint-title">2枚交換レッスン — 手順 ' + (tutorialStep + 1) + ' / 5</div>' +
+      '<div class="hint-steps">' + chips.join('') + '</div>' +
+      '<div class="hint-reason">' + step.why + ' 点滅している方向へ90°回してください。</div>';
+  }
+
+  function advanceTutorial(){
+    if (!tutorialOn) return;
+    tutorialStep++;
+    if (tutorialStep < tutorialSteps.length){
+      renderTutorial();
+      return;
+    }
+    clearPreview();
+    tutorialLabel.textContent = 'レッスン完了';
+    elStat.classList.add('win');
+    elStat.innerHTML =
+      '<div class="hint-title">成功：8と9だけを交換できました。</div>' +
+      '<div class="hint-steps"><span class="hint-step">右上 ↻</span><span class="hint-step">左下 ↺</span><span class="hint-step">右上 ↺</span><span class="hint-step">左下 ↻</span><span class="hint-step">右下 ↻</span></div>' +
+      '<div class="hint-reason">途中では全面が崩れて見えましたが、最後の3手で7枚を回収しました。これが「崩す → 戻す」で2枚だけを動かす定石です。</div>';
+  }
+
+  function startTutorial(){
+    if (busy || demoOn) return;
+    stopDemo(true);
+    qualityMode = false;
+    hintBtn.classList.remove('live');
+    hintLabel.textContent = 'HINTをON';
+    clearInterval(timer); timer = null; started = 0;
+    board.classList.remove('won');
+    clearStartClue();
+    tiles.forEach(function(t){ t.style.animation = 'none'; void t.offsetWidth; t.style.animation = ''; });
+    tutorialOn = true; tutorialStep = 0; solved = false; moves = 0; history = [];
+    state = [0,1,2,3,4,5,6,8,7];
+    relayout();
+    elMoves.textContent = '0';
+    elTime.textContent = '—';
+    setKnobsEnabled(true);
+    mixBtn.disabled = true; resetBtn.disabled = true; hintBtn.disabled = true; demoBtn.disabled = true;
+    tutorialBtn.classList.add('live');
+    tutorialLabel.textContent = 'レッスンを終了';
+    refresh();
+    renderTutorial();
+  }
+
+  function stopTutorial(startGame){
+    tutorialOn = false; tutorialStep = 0;
+    elStat.classList.remove('tutorial');
+    clearPreview();
+    tutorialBtn.classList.remove('live');
+    tutorialLabel.textContent = '2枚交換レッスン';
+    mixBtn.disabled = false; resetBtn.disabled = false; hintBtn.disabled = false; demoBtn.disabled = false;
+    if (startGame) scramble(puzzlePar, true);
+    else refresh();
+  }
+
+  function nextPuzzle(){
+    if ((!solved && !clearedStages.has(stageNo)) || tutorialOn || busy || stageNo >= 15) return;
+    stageNo++;
+    puzzlePar = stageNo >= 13 ? 5 : (stageNo >= 10 ? 4 : Math.min(3, Math.ceil(stageNo / 3)));
+    scramble(puzzlePar, true);
+  }
+
+  function updateStageOptions(){
+    Array.prototype.forEach.call(stageSelect.options, function(option){
+      var number = Number(option.value);
+      var par = number >= 13 ? 5 : (number >= 10 ? 4 : Math.min(3, Math.ceil(number / 3)));
+      option.textContent = (clearedStages.has(number) ? '✓ ' : '　') +
+        '問題 ' + number + ' — 最短' + par + '手';
+    });
+    stageSelect.value = String(stageNo);
+  }
+
+  function prevPuzzle(){
+    if (stageNo <= 1 || tutorialOn || busy || demoOn) return;
+    stageNo--;
+    puzzlePar = stageNo >= 13 ? 5 : (stageNo >= 10 ? 4 : Math.min(3, Math.ceil(stageNo / 3)));
+    scramble(puzzlePar, true);
+  }
+
+  function runIntro(){
+    introOn = true;
+    stageNo = 7; puzzlePar = 3;
+    scramble(3, false);
+    say('まずは見本です。90°回転を3手続けて完成します。');
+    setTimeout(function(){
+      if (!introOn) return;
+      var queue = autoQueue();
+      if (!queue.length){ showIntroCard(); return; }
+      playIntroMoves(queue, 0);
+    }, reduce ? 100 : 650);
+  }
+
+  function playIntroMoves(queue, index){
+    if (!introOn) return;
+    if (index >= queue.length){
+      winFeedback();
+      setTimeout(function(){ if (introOn) showIntroCard(); }, reduce ? 250 : 1250);
+      return;
+    }
+    var mv = queue[index];
+    say('見本：90°回転 ' + (index + 1) + ' / ' + queue.length + '手');
+    rotate(mv.p, mv.cw, { force:true, after:function(){
+      setTimeout(function(){ playIntroMoves(queue, index + 1); }, reduce ? 40 : 220);
+    }});
+  }
+
+  function showIntroCard(){
+    introOverlay.classList.add('show');
+    setTimeout(function(){ startBtn.focus(); }, 50);
+  }
+
+  function beginGame(){
+    introOverlay.classList.remove('show');
+    introOn = false;
+    stageRecords = Object.create(null);
+    undoBtn.disabled = resetBtn.disabled = hintBtn.disabled = mixBtn.disabled = demoBtn.disabled =
+      tutorialBtn.disabled = prevBtn.disabled = nextBtn.disabled = stageSelect.disabled = false;
+    stageNo = 1; puzzlePar = 1;
+    scramble(1, false);
+  }
+
+  function startDemo(){
+    if (busy || solved || tutorialOn) return;
+    var queue = autoQueue();
+    if (!queue.length) return;
+
+    demoOn = true; demoUsed = true;
+    clearStartClue();
+    clearInterval(timer); timer = null;          // 時間は止める（手数も進めない）
+    clearPreview();
+    setKnobsEnabled(false);
+    undoBtn.disabled = true; resetBtn.disabled = true; mixBtn.disabled = true; hintBtn.disabled = true;
+    demoBtn.classList.add('live');
+    demoLabel.textContent = '停止';
+
+    var total = queue.length, n = 0;
+    (function next(){
+      if (!demoOn) return;
+      if (n >= total){ stopDemo(); return; }
+      var mv = queue[n++];
+      say('AUTOでクリア中 — ' + n + ' / ' + total + ' 手');
+      knobs[mv.p].classList.add('hot');
+      knobs[mv.p].classList.add(mv.cw ? 'press-cw' : 'press-ccw');
+      orbits[mv.p].classList.add('show');
+      orbits[mv.p].classList.toggle('rev', !mv.cw);
+      rotate(mv.p, mv.cw, { log: true, force: true, fast: true, after: function(){
+        knobs[mv.p].classList.remove('hot');
+        knobs[mv.p].classList.remove('press-cw');
+        knobs[mv.p].classList.remove('press-ccw');
+        orbits[mv.p].classList.remove('show');
+        demoTimer = setTimeout(next, reduce ? 260 : 45);
+      }});
+    })();
+  }
+
+  function stopDemo(silent){
+    if (demoTimer){ clearTimeout(demoTimer); demoTimer = null; }
+    var wasOn = demoOn;
+    demoOn = false;
+    clearPreview();
+    setKnobsEnabled(!solved);
+    mixBtn.disabled = false;
+    demoBtn.classList.remove('live');
+    demoLabel.textContent = '答えを見る';
+    refresh();
+    if (wasOn && !silent && !solved) say('AUTOをとめました。もう一度押すと、この局面からルートを再計算します。');
+  }
+
+  function undo(){
+    if (busy || demoOn || tutorialOn || !history.length) return;
+    if (solved){
+      solved = false;
+      if (celebration) celebration.classList.remove('show');
+      board.classList.remove('won');
+      tiles.forEach(function(t){ t.style.animation = 'none'; void t.offsetWidth; t.style.animation = ''; });
+      setKnobsEnabled(true);
+      nextBtn.innerHTML = '次の問題へ → <span class="key">N</span>';
+    }
+    var last = history.pop();
+    moves = Math.max(0, moves - 1);
+    rotate(last.p, !last.cw, {});
+    if (moves === 0 && puzzlePar === 3 && puzzleFirstP >= 0){
+      stageClueP = puzzleFirstP;
+      knobs[stageClueP].classList.add('start-clue', puzzleFirstCw ? 'clue-cw' : 'clue-ccw');
+    }
+    say('1手もどしました。手数も1つ減ります。');
+  }
+
+  function resetPuzzle(){
+    if (busy || demoOn || tutorialOn || introOn) return;
+    scramble(puzzlePar, true);
+    say('この問題を最初の盤面へ戻しました。');
+  }
+
+  undoBtn.addEventListener('click', undo);
+  resetBtn.addEventListener('click', resetPuzzle);
+  mixBtn.addEventListener('click', function(){ scramble(); });
+  hintBtn.addEventListener('click', showHint);
+  demoBtn.addEventListener('click', toggleDemo);
+  tutorialBtn.addEventListener('click', function(){
+    if (tutorialOn) stopTutorial(true);
+    else startTutorial();
+  });
+  nextBtn.addEventListener('click', nextPuzzle);
+  prevBtn.addEventListener('click', prevPuzzle);
+  startBtn.addEventListener('click', beginGame);
+  stageSelect.addEventListener('change', function(){
+    if (busy || demoOn || tutorialOn) return;
+    stageNo = Number(stageSelect.value);
+    puzzlePar = stageNo >= 13 ? 5 : (stageNo >= 10 ? 4 : Math.min(3, Math.ceil(stageNo / 3)));
+    scramble(puzzlePar, true);
+  });
+
+  /* ---------- 起動 ---------- */
+  build();
+  bindKnobs();
+  updateStageOptions();
+  runIntro();
+  if (window.ResizeObserver){
+    new ResizeObserver(function(){ if (!busy && !drag) relayout(); }).observe(board);
+  } else {
+    window.addEventListener('resize', function(){ if (!busy && !drag) relayout(); });
+  }
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(relayout);
+})();
+</script>
+</body>
+</html>
