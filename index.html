@@ -130,6 +130,7 @@
   .tile.zone-7::after{background:linear-gradient(90deg,var(--zone-c) 0 50%,var(--zone-d) 50% 100%)}
   .tile.zone-8::after{background:var(--zone-d)}
   .board.previewing .tile.lit::after{filter:saturate(1.6) brightness(1.12)}
+  .board.dragging .tile::after{opacity:0;filter:none}
   .tile.home::before{
     content:"✓";position:absolute;right:5px;top:5px;width:16px;height:16px;border-radius:5px;
     display:flex;align-items:center;justify-content:center;
@@ -173,6 +174,25 @@
   @keyframes moveSpark{
     0%{transform:translate(-50%,-50%) scale(1.2) rotate(0);opacity:1}
     100%{transform:translate(calc(-50% + var(--spark-x)),calc(-50% + var(--spark-y))) scale(.2) rotate(180deg);opacity:0}
+  }
+  .reset-notice{
+    position:absolute;left:50%;top:50%;z-index:10;transform:translate(-50%,-50%) scale(.9);
+    padding:8px 14px;border:1px solid var(--brass);border-radius:999px;
+    background:rgba(14,22,32,.92);color:var(--brass);
+    font-size:13px;font-weight:700;letter-spacing:.08em;
+    opacity:0;pointer-events:none;
+  }
+  .reset-notice.show{animation:resetNotice .9s ease both}
+  .reset-notice.start{border-color:var(--teal);color:var(--teal)}
+  .board.reset-feedback{animation:resetBoard .7s ease}
+  .board.reset-feedback .tile{filter:brightness(1.08)}
+  @keyframes resetNotice{
+    0%{opacity:0;transform:translate(-50%,-50%) scale(.88)}
+    18%,68%{opacity:1;transform:translate(-50%,-50%) scale(1)}
+    100%{opacity:0;transform:translate(-50%,-56%) scale(1)}
+  }
+  @keyframes resetBoard{
+    35%{box-shadow:0 24px 60px -30px #000,inset 0 0 0 3px rgba(208,168,82,.55)}
   }
   .board.previewing .tile{opacity:.5;filter:saturate(.5)}
   .board.previewing .tile.lit{
@@ -534,6 +554,8 @@
     .celebration.show .celebration-card{animation:none}
     .gesture-tile,.gesture-finger{animation:none}
     .move-spark{display:none}
+    .reset-notice.show{animation:none;opacity:1;transform:translate(-50%,-50%)}
+    .board.reset-feedback{animation:none}
     *{transition-duration:.01ms !important}
   }
 </style>
@@ -624,7 +646,7 @@
       </div>
       <div class="gesture-copy">
         <b>盤面をスワイプ</b>
-        <span>交点のまわりへ<em>ひねる</em>と、4枚が指について回ります。</span>
+        <span>盤面をスワイプすると、近くの交点を軸に4枚が回ります。</span>
       </div>
     </div>
     <div class="intro-levels" aria-label="全15問の構成">
@@ -752,14 +774,20 @@
   }
 
   /* ---------- 生成 ---------- */
-  var knobs = [], orbits = [], qualityLabel = null, celebration = null;
+  var knobs = [], orbits = [], qualityLabel = null, celebration = null, resetNotice = null;
+  var boardNoticeTimer = null;
   var celebrationMessage = null, celebrationNext = null, celebrationClose = null;
   var allClearExtra = null;
+  var celebrationResetOnClose = false;
   function build(){
     var frag = document.createDocumentFragment();
     qualityLabel = document.createElement('div');
     qualityLabel.className = 'quality-label';
     frag.appendChild(qualityLabel);
+    resetNotice = document.createElement('div');
+    resetNotice.className = 'reset-notice';
+    resetNotice.textContent = '最初の盤面';
+    frag.appendChild(resetNotice);
     celebration = document.createElement('div');
     celebration.className = 'celebration';
     celebration.setAttribute('role', 'dialog');
@@ -1131,10 +1159,11 @@
     refresh();
     say('問題 ' + stageNo + ' — 最短' + puzzlePar + '手。' +
       (stageNo === 1
-        ? '交点を中心に、ひねるように90°回してみましょう。'
+        ? '盤面をスワイプして、4枚を90°回してみましょう。'
         : puzzlePar >= 3
         ? '回した後の4枚を想像して、次の1手を選んでください。'
         : '回した後の4枚を想像してみてください。'));
+    if (!introOn) showStartFeedback();
   }
 
   /* ---------- 時間 ---------- */
@@ -1142,6 +1171,26 @@
     elStat.textContent = text;
     elStat.classList.toggle('win', !!win);
   }
+
+  function showBoardNotice(text, isStart){
+    if (!resetNotice) return;
+    if (boardNoticeTimer) clearTimeout(boardNoticeTimer);
+    board.classList.remove('reset-feedback');
+    resetNotice.classList.remove('show', 'start');
+    resetNotice.textContent = text;
+    resetNotice.classList.toggle('start', !!isStart);
+    void board.offsetWidth;
+    board.classList.add('reset-feedback');
+    resetNotice.classList.add('show');
+    boardNoticeTimer = setTimeout(function(){
+      board.classList.remove('reset-feedback');
+      resetNotice.classList.remove('show', 'start');
+      boardNoticeTimer = null;
+    }, 920);
+  }
+
+  function showResetFeedback(){ showBoardNotice('最初の盤面', false); }
+  function showStartFeedback(){ showBoardNotice('START', true); }
 
   function playMoveSound(homeHits){
     if (introOn || demoOn) return;
@@ -1214,10 +1263,22 @@
   function closeCelebration(){
     if (!celebration) return;
     celebration.classList.remove('show');
+    if (celebrationResetOnClose && !introOn){
+      celebrationResetOnClose = false;
+      setTimeout(function(){
+        stopDemo(true);
+        if (freeMode) startFreeGame(true);
+        else scramble(puzzlePar, true);
+        say('この問題を最初の盤面へ戻しました。もう一度、自力で挑戦できます。');
+        showResetFeedback();
+      }, 0);
+    }
   }
 
   function winFeedback(allClear, answerViewed, usedHint, isFree){
     if (!celebration) return;
+    celebrationResetOnClose = !!(answerViewed || usedHint);
+    celebrationClose.textContent = celebrationResetOnClose ? '閉じて最初に戻る' : '閉じる';
     allClearExtra.classList.toggle('show', !!allClear && !answerViewed && !usedHint && !isFree);
     celebration.querySelector('.celebration-label').textContent =
       answerViewed ? 'ANSWER' : (usedHint ? 'PRACTICE' : (allClear && !tutorialOn ? 'ALL CLEAR!' : 'CLEAR!'));
@@ -1226,11 +1287,13 @@
       celebrationNext.hidden = true;
       celebrationClose.hidden = true;
     } else if (answerViewed){
-      celebrationMessage.textContent = '答えを確認しました。自力で解くとクリアになります。';
+      celebrationMessage.textContent =
+        '答えを確認しました。閉じるとこの問題の最初に戻ります。自力で解くとクリアになります。';
       celebrationNext.hidden = true;
       celebrationClose.hidden = false;
     } else if (usedHint){
-      celebrationMessage.textContent = 'HINTを使ったため練習扱いです。もう一度、自力で挑戦しましょう。';
+      celebrationMessage.textContent =
+        'HINTを使ったため練習扱いです。閉じるとこの問題の最初に戻ります。';
       celebrationNext.hidden = true;
       celebrationClose.hidden = false;
     } else if (isFree){
@@ -1831,6 +1894,7 @@
     setKnobsEnabled(true);
     refresh();
     say('上級者用フリー — 最短手数は秘密。交換技を使って、自由に完成を目指してください。');
+    showStartFeedback();
   }
 
   function nextPuzzle(){
@@ -1976,10 +2040,12 @@
     if (freeMode){
       startFreeGame(true);
       say('上級者用フリーを最初の盤面へ戻しました。');
+      showResetFeedback();
       return;
     }
     scramble(puzzlePar, true);
     say('この問題を最初の盤面へ戻しました。');
+    showResetFeedback();
   }
 
   undoBtn.addEventListener('click', undo);
