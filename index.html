@@ -177,13 +177,17 @@
   }
   .reset-notice{
     position:absolute;left:50%;top:50%;z-index:10;transform:translate(-50%,-50%) scale(.9);
-    padding:8px 14px;border:1px solid var(--brass);border-radius:999px;
+    padding:10px 20px;border:1px solid var(--brass);border-radius:999px;
     background:rgba(14,22,32,.92);color:var(--brass);
-    font-size:13px;font-weight:700;letter-spacing:.08em;
+    font-size:18px;font-weight:700;letter-spacing:.08em;
     opacity:0;pointer-events:none;
   }
   .reset-notice.show{animation:resetNotice .9s ease both}
-  .reset-notice.start{border-color:var(--teal);color:var(--teal)}
+  .reset-notice.start{
+    padding:11px 24px;border-color:var(--teal);color:var(--teal);
+    font-family:var(--num);font-size:20px;letter-spacing:.14em;
+    box-shadow:0 0 26px rgba(90,201,180,.28);
+  }
   .board.reset-feedback{animation:resetBoard .7s ease}
   .board.reset-feedback .tile{filter:brightness(1.08)}
   @keyframes resetNotice{
@@ -268,16 +272,16 @@
   /* ---- knob : 交点のつまみ（左半分=↺ / 右半分=↻） ---- */
   .knob{
     position:absolute;top:0;left:0;width:0;height:0;z-index:5;
-    --k:36px; --kp:0px; --kr:calc((var(--k) - var(--kp)*2)/2);
+    --k:64px; --kp:6px; --kr:calc((var(--k) - var(--kp)*2)/2);
   }
   .knob .dot{
-    position:absolute;left:-6px;top:-6px;width:12px;height:12px;border-radius:50%;
+    position:absolute;left:-9px;top:-9px;width:18px;height:18px;border-radius:50%;
     background:var(--panel-2);border:1px solid rgba(208,168,82,.72);
     box-shadow:0 0 0 3px rgba(14,22,32,.9);
     transition:opacity .14s ease,border-color .14s ease,box-shadow .14s ease;pointer-events:none;
   }
   .knob .dot::before{
-    content:"";position:absolute;left:50%;top:50%;width:24px;height:24px;
+    content:"";position:absolute;left:50%;top:50%;width:30px;height:30px;
     transform:translate(-50%,-50%);border-radius:50%;
     border:1px solid rgba(208,168,82,.18);
     background:
@@ -307,22 +311,29 @@
   .half::before{
     content:"";position:absolute;top:var(--kp);bottom:var(--kp);
     background:var(--panel-2);border:1px solid var(--brass-dim);
-    opacity:0;transition:opacity .14s ease,background .14s ease,border-color .14s ease;
+    opacity:0;transition:opacity .14s ease,background .14s ease,border-color .14s ease,transform .14s ease;
   }
   .half.ccw::before{left:var(--kp);right:0;border-right:0;border-radius:var(--kr) 0 0 var(--kr)}
   .half.cw::before{left:0;right:var(--kp);border-left:0;border-radius:0 var(--kr) var(--kr) 0}
+  .half.ccw::before{transform-origin:right center}
+  .half.cw::before{transform-origin:left center}
   .half span{
     position:relative;color:var(--brass);opacity:0;
     transition:opacity .14s ease,color .14s ease;
   }
+  .half::before{box-shadow:0 5px 16px rgba(0,0,0,.28)}
   .knob.hot .dot{opacity:0}
-  .knob.hot .half::before,.knob.hot .half span{opacity:1}
+  .knob.hot .half::before{opacity:1;transform:scale(1.28)}
+  .knob.hot .half span{opacity:1}
   .knob.hot.press-cw .half.ccw::before,.knob.hot.press-cw .half.ccw span,
   .knob.hot.press-ccw .half.cw::before,.knob.hot.press-ccw .half.cw span{opacity:.1}
   .knob.hot.press-cw .half.cw span,.knob.hot.press-ccw .half.ccw span{
     font-size:1.55em;font-weight:700;animation:hintPulse .45s ease-in-out infinite alternate;
   }
-  .half:hover::before,.half:focus-visible::before{background:#14313a;border-color:var(--teal)}
+  .knob.hot .half:hover::before,.half:focus-visible::before{
+    background:#09111a;border-color:var(--teal);transform:scale(1.28);
+    box-shadow:0 7px 22px rgba(0,0,0,.42),0 0 16px rgba(90,201,180,.25);
+  }
   .half:hover span,.half:focus-visible span{
     color:var(--teal);opacity:1;font-size:1.55em;font-weight:700;
     text-shadow:0 0 12px rgba(90,201,180,.7);
@@ -583,7 +594,7 @@
       <div class="controls">
         <div class="primary-actions">
           <button class="btn" id="undoBtn">1手もどす <span class="key">U</span></button>
-          <button class="btn" id="resetBtn">この問題の最初から</button>
+          <button class="btn" id="resetBtn">やり直す</button>
           <button class="btn" id="mixBtn">シャッフルする <span class="key">R</span></button>
           <button class="btn" id="hintBtn"><span id="hintLabel">HINTをON</span> <span class="key">H</span></button>
           <button class="btn" id="demoBtn"><span id="demoLabel">答えを見る</span> <span class="key">G</span></button>
@@ -1189,7 +1200,7 @@
     }, 920);
   }
 
-  function showResetFeedback(){ showBoardNotice('最初の盤面', false); }
+  function showResetFeedback(){ showBoardNotice('やり直し', false); }
   function showStartFeedback(){ showBoardNotice('START', true); }
 
   function playMoveSound(homeHits){
@@ -1366,6 +1377,7 @@
     if (p >= 0) knobs[p].classList.add('candidate');
   }
   function showMoveQuality(p, cw){
+    hintUsed = true;
     var currentKey = state.join('');
     var nextKey = permuteArray(state, p, cw).join('');
     var otherKey = permuteArray(state, p, !cw).join('');
@@ -1743,7 +1755,6 @@
       return;
     }
     qualityMode = !qualityMode;
-    if (qualityMode) hintUsed = true;
     clearPreview();
     hintBtn.classList.toggle('live', qualityMode);
     hintLabel.textContent = qualityMode ? 'HINTをOFF' : 'HINTをON';
