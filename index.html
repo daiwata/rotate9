@@ -77,7 +77,7 @@
     text-shadow:0 0 22px rgba(90,201,180,.18);
   }
   .challenge-title{
-    margin:13px 0 6px;display:flex;flex-wrap:wrap;align-items:baseline;justify-content:flex-start;gap:4px 12px;
+    margin:13px 0 6px;display:flex;flex-wrap:wrap;align-items:center;justify-content:flex-start;gap:4px 12px;
     font-size:clamp(22px,4.5vw,32px);font-weight:700;letter-spacing:.02em;line-height:1.25;
   }
   .challenge-title em{font-style:normal;color:var(--teal)}
@@ -85,20 +85,32 @@
     flex:0 0 auto;color:var(--muted);font-family:var(--num);
     font-size:clamp(13px,2.8vw,17px);font-weight:700;letter-spacing:.08em;
   }
+  .headline-stage b{color:var(--bone);font-size:1.08em;letter-spacing:.03em}
   .headline-moves{
-    flex:0 0 auto;color:var(--muted);font-size:clamp(12px,2.6vw,15px);font-weight:500;
+    flex:0 0 auto;padding-left:11px;border-left:1px solid var(--line);
+    color:var(--muted);font-size:clamp(12px,2.6vw,15px);font-weight:500;line-height:1.2;
   }
-  .headline-moves b{color:var(--bone);font-family:var(--num);font-size:1.25em}
+  .headline-moves b{color:var(--bone);font-family:var(--num);font-size:1.35em}
   .stage-progress{margin-top:2px}
-  .progress-nav{display:flex;align-items:center;gap:5px;flex:0 0 auto}
+  .progress-nav{
+    display:flex;align-items:stretch;gap:0;flex:0 0 auto;
+    margin-left:auto;
+    border:1px solid var(--line);border-radius:8px;overflow:hidden;
+    background:rgba(22,32,46,.72);box-shadow:0 5px 14px rgba(0,0,0,.16);
+  }
+  .progress-nav .headline-stage{
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    min-width:70px;padding:3px 10px;border-inline:1px solid var(--line);text-align:center;
+  }
   .progress-nav button{
-    min-height:28px;padding:4px 9px;border:1px solid var(--line);border-radius:5px;
-    background:var(--panel);color:var(--muted);font-family:var(--jp);font-size:11px;
+    min-height:42px;padding:6px 11px;border:0;border-radius:0;
+    background:var(--panel-2);color:var(--bone);font-family:var(--jp);font-size:12px;font-weight:700;
     cursor:pointer;
   }
-  .progress-nav button:hover{border-color:var(--brass);color:var(--bone)}
+  .progress-nav button:hover{background:#213047;color:var(--teal)}
   .progress-nav button:focus-visible{outline:2px solid var(--teal);outline-offset:2px}
   .progress-nav button:disabled{visibility:hidden}
+  .progress-nav #nextBtn{background:#14313a;color:var(--teal)}
   .progress-track{display:flex;gap:3px}
   .progress-step{flex:1 1 0;min-width:0;height:29px;padding:10px 0;border:0;background:transparent;cursor:pointer}
   .progress-step::before{
@@ -713,13 +725,14 @@
     body{padding:20px 14px 40px}
     header{margin-bottom:10px}
     .challenge-title{
-      flex-wrap:nowrap;gap:4px 9px;font-size:clamp(17px,5vw,21px);white-space:nowrap;
+      flex-wrap:nowrap;gap:4px 7px;font-size:clamp(17px,5vw,21px);white-space:nowrap;
     }
-    .challenge-title>span:nth-child(2){font-size:clamp(20px,6vw,24px)}
+    .challenge-title>span:first-child{font-size:clamp(20px,6vw,24px)}
     .headline-stage{font-size:clamp(9px,2.7vw,12px);letter-spacing:0}
-    .headline-moves{font-size:clamp(9px,2.7vw,12px)}
-    .progress-nav{gap:3px}
-    .progress-nav button{min-height:25px;padding:3px 4px;font-size:9px}
+    .headline-moves{padding-left:7px;font-size:clamp(9px,2.7vw,12px)}
+    .progress-nav{flex-basis:auto;justify-content:flex-start;margin-top:0}
+    .progress-nav .headline-stage{min-width:46px;padding-inline:5px}
+    .progress-nav button{min-height:38px;padding:5px 7px;font-size:10px}
     .play{row-gap:12px}
     .board-wrap{width:100%;margin:0 auto}
     .panel{min-width:0}
@@ -737,8 +750,10 @@
     .board.move-done{animation:boardSettleMobile .4s ease}
   }
   @media (max-width:340px){
-    .progress-nav .nav-label{display:none}
-    .progress-nav button{min-width:24px}
+    .challenge-title{gap:3px 5px}
+    .challenge-title>span:first-child{font-size:18px}
+    .progress-nav .headline-stage{min-width:40px;padding-inline:3px}
+    .progress-nav button{padding-inline:5px;font-size:9px}
   }
   @media (max-width:520px){
     .advanced-actions{grid-template-columns:1fr}
@@ -860,11 +875,11 @@
     </div>
     <h1>ROTATE <em>NINE</em></h1>
     <p class="challenge-title">
-      <span class="headline-stage" id="headlineStage">問題 1 / 15</span>
       <span>最短<em><span id="headlinePar">1</span>手</em>で完成</span>
-      <span class="headline-moves">現在 <b id="moves">0</b>手</span>
+      <span class="headline-moves">現在<br><b id="moves">0</b>手</span>
       <span class="progress-nav" aria-label="問題を移動">
         <button id="prevBtn" type="button" aria-label="前の問題へ">← <span class="nav-label">前へ</span></button>
+        <span class="headline-stage" id="headlineStage">問題<br><b>1 / 15</b></span>
         <button id="nextBtn" type="button" aria-label="次の問題へ"><span class="nav-label">次へ</span> →</button>
       </span>
     </p>
@@ -1310,8 +1325,8 @@
       }
     }
     headlinePar.textContent = tutorialOn ? '5' : (freeMode ? '?' : puzzlePar);
-    headlineStage.textContent = tutorialOn ? 'LESSON' :
-      (freeMode ? '上級者用フリー' : '問題 ' + stageNo + ' / 15');
+    headlineStage.innerHTML = tutorialOn ? 'LESSON' :
+      (freeMode ? '上級者用フリー' : '問題<br><b>' + stageNo + ' / 15</b>');
     stageProgress.hidden = tutorialOn || freeMode;
     if (!tutorialOn && !freeMode){
       progressSteps.forEach(function(stepEl, index){
