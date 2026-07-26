@@ -4,6 +4,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>ROTATE NINE — 4枚を回す数字パズル</title>
+<script>
+  if (new URLSearchParams(location.search).get('embed') === '1') {
+    document.documentElement.classList.add('embed');
+  }
+</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;700&family=Space+Grotesk:wght@500;700&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap" rel="stylesheet">
@@ -670,6 +675,25 @@
     .board.reset-feedback{animation:none}
     *{transition-duration:.01ms !important}
   }
+
+  /* ---- 埋め込み表示 ---- */
+  html.embed,html.embed body{min-height:0}
+  html.embed body{
+    padding:14px 12px 18px;
+    overflow:hidden;
+  }
+  html.embed .header-top,html.embed h1{display:none}
+  html.embed header{margin-bottom:10px}
+  html.embed .challenge-title{margin-top:0}
+  html.embed .play{row-gap:12px}
+  html.embed .board-wrap{
+    width:min(100%,420px);
+    margin:0 auto;
+  }
+  html.embed .panel{
+    flex:1 1 100%;
+    min-width:0;
+  }
 </style>
 </head>
 <body>
@@ -766,6 +790,7 @@
 (function(){
   "use strict";
 
+  var embedMode = document.documentElement.classList.contains('embed');
   var board   = document.getElementById('board');
   var elMoves = document.getElementById('moves');
   var headlinePar = document.getElementById('headlinePar');
@@ -2385,13 +2410,35 @@
   bindKnobs();
   startSolverWorker();
   updateStageOptions();
-  runIntro();
+  if (embedMode) beginGame();
+  else runIntro();
   if (window.ResizeObserver){
     new ResizeObserver(function(){ if (!busy && !drag) relayout(); }).observe(board);
   } else {
     window.addEventListener('resize', function(){ if (!busy && !drag) relayout(); });
   }
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(relayout);
+
+  if (embedMode && window.parent !== window){
+    var embedStage = document.querySelector('.stage');
+    var reportEmbedHeight = function(){
+      requestAnimationFrame(function(){
+        var bodyStyle = getComputedStyle(document.body);
+        var height = embedStage.getBoundingClientRect().bottom +
+          window.scrollY + parseFloat(bodyStyle.paddingBottom);
+        window.parent.postMessage({
+          type:'rotate9:height',
+          height:Math.ceil(height)
+        }, location.origin === 'null' ? '*' : location.origin);
+      });
+    };
+
+    if (window.ResizeObserver) new ResizeObserver(reportEmbedHeight).observe(embedStage);
+    window.addEventListener('resize', reportEmbedHeight);
+    window.addEventListener('load', reportEmbedHeight);
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(reportEmbedHeight);
+    reportEmbedHeight();
+  }
 })();
 </script>
 </body>
