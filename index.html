@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>ROTATE 9 — 4枚を回す数字パズル</title>
+<title>ROTATE NINE — 4枚を回す数字パズル</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap" rel="stylesheet">
@@ -47,11 +47,19 @@
 
   /* ---- header ---- */
   header{margin-bottom:26px}
+  .header-top{display:flex;align-items:center;gap:12px;margin-bottom:6px}
   .eyebrow{
     font-family:var(--num);font-size:11px;letter-spacing:.24em;text-transform:uppercase;
-    color:var(--brass);margin:0 0 6px;display:flex;align-items:center;gap:10px;
+    color:var(--brass);margin:0;display:flex;align-items:center;gap:10px;flex:1;
   }
   .eyebrow::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,var(--brass-dim),transparent)}
+  .help-btn{
+    flex:0 0 auto;padding:6px 10px;border:1px solid var(--line);border-radius:999px;
+    background:rgba(22,32,46,.72);color:var(--muted);
+    font-family:var(--jp);font-size:12px;font-weight:700;cursor:pointer;
+  }
+  .help-btn:hover{border-color:var(--teal);color:var(--teal)}
+  .help-btn:focus-visible{outline:2px solid var(--teal);outline-offset:2px}
   h1{
     margin:0;font-family:var(--num);font-size:clamp(38px,8vw,64px);font-weight:700;
     letter-spacing:.08em;line-height:1;color:var(--bone);
@@ -71,6 +79,33 @@
     flex:0 0 auto;color:var(--muted);font-size:clamp(12px,2.6vw,15px);font-weight:500;
   }
   .headline-moves b{color:var(--bone);font-family:var(--num);font-size:1.25em}
+  .stage-progress{margin-top:2px}
+  .progress-nav{display:flex;align-items:center;gap:5px;flex:0 0 auto}
+  .progress-nav button{
+    min-height:28px;padding:4px 9px;border:1px solid var(--line);border-radius:5px;
+    background:var(--panel);color:var(--muted);font-family:var(--jp);font-size:11px;
+    cursor:pointer;
+  }
+  .progress-nav button:hover{border-color:var(--brass);color:var(--bone)}
+  .progress-nav button:focus-visible{outline:2px solid var(--teal);outline-offset:2px}
+  .progress-nav button:disabled{visibility:hidden}
+  .progress-track{display:grid;grid-template-columns:repeat(15,1fr);gap:3px}
+  .progress-step{height:25px;padding:10px 0;border:0;background:transparent;cursor:pointer}
+  .progress-step::before{
+    content:"";display:block;height:5px;border-radius:3px;background:var(--line);
+    transition:background .2s,transform .2s;
+  }
+  .progress-step:nth-child(3n+1):not(:first-child){margin-left:3px}
+  .progress-step.done::before{background:var(--teal)}
+  .progress-step.current::before{
+    background:transparent;box-shadow:inset 0 0 0 2px var(--brass);transform:scaleY(1.7);
+  }
+  .progress-step.done.current::before{
+    background:var(--teal);box-shadow:0 0 0 2px var(--brass);
+  }
+  .progress-step:hover::before{filter:brightness(1.35)}
+  .progress-step:focus-visible{outline:2px solid var(--teal);outline-offset:2px;border-radius:4px}
+  .progress-step:disabled{cursor:default;opacity:.45}
 
   /* ---- layout ---- */
   .play{display:flex;gap:34px;align-items:flex-start;flex-wrap:wrap}
@@ -188,7 +223,17 @@
     font-family:var(--num);font-size:20px;letter-spacing:.14em;
     box-shadow:0 0 26px rgba(90,201,180,.28);
   }
+  .reset-notice.final{
+    display:flex;flex-direction:column;align-items:center;gap:5px;
+    min-width:230px;padding:17px 30px;border-radius:12px;
+    border-color:var(--brass);color:var(--brass);
+    box-shadow:0 0 38px rgba(208,168,82,.42);
+    animation:finalNotice 2.15s ease both;
+  }
+  .reset-notice.final strong{font-family:var(--num);font-size:25px;letter-spacing:.16em}
+  .reset-notice.final small{color:var(--bone);font-size:13px;font-weight:700;letter-spacing:.08em}
   .board.reset-feedback{animation:resetBoard .7s ease}
+  .board.final-feedback{animation:finalBoard 1.9s ease}
   .board.reset-feedback .tile{filter:brightness(1.08)}
   @keyframes resetNotice{
     0%{opacity:0;transform:translate(-50%,-50%) scale(.88)}
@@ -197,6 +242,14 @@
   }
   @keyframes resetBoard{
     35%{box-shadow:0 24px 60px -30px #000,inset 0 0 0 3px rgba(208,168,82,.55)}
+  }
+  @keyframes finalNotice{
+    0%{opacity:0;transform:translate(-50%,-50%) scale(.72)}
+    16%,78%{opacity:1;transform:translate(-50%,-50%) scale(1)}
+    100%{opacity:0;transform:translate(-50%,-54%) scale(1.04)}
+  }
+  @keyframes finalBoard{
+    35%{box-shadow:0 24px 60px -30px #000,inset 0 0 0 3px rgba(208,168,82,.72),0 0 42px rgba(208,168,82,.25)}
   }
   .board.previewing .tile{opacity:.5;filter:saturate(.5)}
   .board.previewing .tile.lit{
@@ -388,7 +441,7 @@
   /* ---- panel ---- */
   .panel{flex:1 1 280px;min-width:270px}
   .controls{display:grid;gap:12px}
-  .primary-actions,.stage-actions,.more-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .primary-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}
   .primary-actions{grid-template-columns:repeat(6,1fr)}
   .primary-actions .btn{grid-column:span 2}
   .primary-actions #hintBtn,.primary-actions #demoBtn{grid-column:span 3}
@@ -410,24 +463,33 @@
   #tutorialBtn.live,#diagonalBtn.live,#diagonal68Btn.live,#escapeBtn.live{
     border-color:var(--teal);color:var(--teal);background:#14313a;
   }
-  #nextBtn{grid-column:auto;border-color:var(--teal);color:var(--teal)}
-  #nextBtn:disabled{visibility:hidden}
-  #prevBtn{grid-column:auto}
-  #stageSelect{
-    grid-column:1 / -1;width:100%;padding:10px 11px;
-    border:1px solid var(--line);border-radius:7px;
-    background:var(--panel);color:var(--bone);
-    font-family:var(--jp);font-size:13px;cursor:pointer;
-  }
-  #stageSelect:focus-visible{outline:2px solid var(--teal);outline-offset:2px}
-  #stageSelect:disabled{opacity:.4;cursor:default}
-  .key{font-family:var(--num);font-size:10px;color:var(--muted);letter-spacing:.08em}
-
+  #nextBtn{border-color:rgba(90,201,180,.55);color:var(--teal)}
   .status{
     border:1px solid var(--line);border-left:3px solid var(--brass);border-radius:7px;
     background:rgba(22,32,46,.65);padding:11px 13px;
     font-size:14px;line-height:1.65;color:var(--bone);
     height:calc(3.3em + 24px);overflow:hidden;margin:0 0 14px;
+  }
+  .status-head{display:flex;align-items:center;justify-content:space-between;margin:0 0 6px}
+  .status-head span{color:var(--muted);font-size:10px;letter-spacing:.14em}
+  #strategyBtn{
+    min-height:30px;padding:4px 10px;border:1px solid rgba(90,201,180,.5);border-radius:999px;
+    background:rgba(90,201,180,.07);color:var(--teal);
+    font-family:var(--jp);font-size:12px;font-weight:700;cursor:pointer;
+  }
+  #strategyBtn:hover{border-color:var(--teal);background:rgba(90,201,180,.14)}
+  #strategyBtn:focus-visible{outline:2px solid var(--teal);outline-offset:2px}
+  #strategyBtn:disabled{opacity:.35;cursor:default}
+  #strategyBtn.attention{animation:strategyAttention 1.1s ease}
+  @keyframes strategyAttention{
+    0%,100%{box-shadow:none;transform:scale(1)}
+    35%{box-shadow:0 0 0 5px rgba(90,201,180,.15),0 0 18px rgba(90,201,180,.22);transform:scale(1.035)}
+  }
+  .status.hint-reveal{animation:hintReveal .75s ease}
+  @keyframes hintReveal{
+    0%{border-color:var(--line);border-left-color:var(--brass);background:rgba(22,32,46,.65)}
+    28%{border-color:var(--teal);background:rgba(20,49,58,.9);box-shadow:0 0 22px rgba(90,201,180,.2)}
+    100%{border-color:var(--line);border-left-color:var(--teal);background:rgba(22,32,46,.65)}
   }
   .status:not(.tutorial){display:flex;align-items:center}
   .status.tutorial{height:auto;min-height:calc(3.3em + 24px);overflow:visible}
@@ -442,13 +504,6 @@
   .hint-step:first-child{border-color:var(--teal);color:var(--teal)}
   .hint-reason{color:var(--muted);font-size:12px}
 
-  .stage-label{font-size:10px;letter-spacing:.16em;color:var(--muted);margin:0 0 6px}
-  .more{border-top:1px solid var(--line);padding-top:9px}
-  .more summary{cursor:pointer;color:var(--muted);font-size:12px;list-style:none;padding:4px 0}
-  .more summary::-webkit-details-marker{display:none}
-  .more summary::before{content:"+ ";color:var(--brass)}
-  .more[open] summary::before{content:"− "}
-  .more-actions{margin-top:8px}
   .intro-overlay{
     position:fixed;inset:0;z-index:40;display:flex;align-items:center;justify-content:center;
     padding:20px;background:rgba(8,13,20,.76);backdrop-filter:blur(8px);
@@ -463,57 +518,82 @@
   .intro-kicker{margin:0 0 8px;color:var(--teal);font-family:var(--num);font-size:11px;font-weight:700;letter-spacing:.18em}
   .intro-card h2{margin:0 0 10px;font-size:25px;line-height:1.35}
   .intro-card>p{margin:0;color:var(--muted);font-size:14px;line-height:1.8}
-  .intro-gesture{display:grid;grid-template-columns:138px 1fr;gap:16px;align-items:center;margin:16px 0}
+  .advanced-card{width:min(100%,520px)}
+  .advanced-actions{
+    display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:18px 0 10px;
+  }
+  .advanced-actions .btn{min-height:54px}
+  .advanced-actions .menu-normal{
+    grid-column:1/-1;border-color:var(--teal);color:var(--teal);font-weight:700;
+  }
+  .advanced-actions .advanced-free{
+    grid-column:1/-1;border-color:var(--brass);color:var(--brass);
+  }
+  .advanced-close{
+    width:100%;border:0;background:transparent;color:var(--muted);
+    padding:10px;border-radius:7px;cursor:pointer;font:inherit;
+  }
+  .advanced-close:hover{color:var(--bone);background:rgba(255,255,255,.05)}
+  .intro-gesture{display:grid;grid-template-columns:190px 1fr;gap:18px;align-items:center;margin:18px 0}
   .gesture-board{
-    position:relative;width:138px;height:138px;border:1px solid var(--line);border-radius:10px;
+    position:relative;width:190px;height:190px;border:1px solid var(--line);border-radius:10px;
     background:linear-gradient(160deg,#1a2637,#121b28);overflow:hidden;
   }
   .gesture-tile{
-    position:absolute;width:48px;height:48px;border-radius:5px;
+    position:absolute;width:50px;height:50px;border-radius:5px;
     display:grid;place-items:center;background:linear-gradient(175deg,#f3eee3,#ddd5c4);
     color:var(--ink);font-family:var(--num);font-size:18px;font-weight:700;
     box-shadow:0 2px 0 #b3a992;
-    transform:translate(var(--x0),var(--y0));
-    animation:gestureTile 2.8s cubic-bezier(.3,.05,.2,1) infinite;
+    transition:transform .52s cubic-bezier(.25,.75,.2,1),filter .25s;
   }
-  .gesture-tile:nth-child(1){--x0:17px;--y0:17px;--x1:73px;--y1:17px}
-  .gesture-tile:nth-child(2){--x0:73px;--y0:17px;--x1:73px;--y1:73px}
-  .gesture-tile:nth-child(3){--x0:73px;--y0:73px;--x1:17px;--y1:73px}
-  .gesture-tile:nth-child(4){--x0:17px;--y0:73px;--x1:17px;--y1:17px}
+  .gesture-board.resetting .gesture-tile{transition:none}
   .gesture-pivot{
-    position:absolute;left:64px;top:64px;width:10px;height:10px;border-radius:50%;
-    background:var(--panel-2);border:1px solid var(--teal);box-shadow:0 0 0 4px rgba(14,22,32,.9);z-index:3;
+    position:absolute;width:8px;height:8px;border-radius:50%;transform:translate(-50%,-50%);
+    background:var(--panel-2);border:1px solid rgba(90,201,180,.45);z-index:3;
   }
-  .gesture-orbit{
-    position:absolute;left:38px;top:38px;width:62px;height:62px;border:1px dashed rgba(90,201,180,.5);border-radius:50%;
-  }
+  .gesture-pivot:nth-of-type(1){left:67px;top:67px}
+  .gesture-pivot:nth-of-type(2){left:123px;top:67px}
+  .gesture-pivot:nth-of-type(3){left:67px;top:123px}
+  .gesture-pivot:nth-of-type(4){left:123px;top:123px}
   .gesture-finger{
-    position:absolute;left:108px;top:30px;width:17px;height:17px;border-radius:50%;
-    background:var(--teal);box-shadow:0 0 0 5px rgba(90,201,180,.18),0 0 14px rgba(90,201,180,.5);
-    z-index:5;animation:gestureFinger 2.8s ease-in-out infinite;
+    position:absolute;width:18px;height:18px;border-radius:50%;z-index:6;pointer-events:none;
+    background:var(--teal);box-shadow:0 0 0 5px rgba(90,201,180,.2),0 0 15px rgba(90,201,180,.65);
+    opacity:0;
+  }
+  .gesture-finger.swipe-down{animation:gestureSwipeDown .9s ease-in-out}
+  .gesture-finger.swipe-up{animation:gestureSwipeUp .9s ease-in-out}
+  @keyframes gestureSwipeDown{
+    0%{transform:translateY(-24px) scale(.75);opacity:0}
+    18%{transform:translateY(-24px) scale(1);opacity:1}
+    78%{transform:translateY(24px) scale(1);opacity:1}
+    100%{transform:translateY(24px) scale(.75);opacity:0}
+  }
+  @keyframes gestureSwipeUp{
+    0%{transform:translateY(24px) scale(.75);opacity:0}
+    18%{transform:translateY(24px) scale(1);opacity:1}
+    78%{transform:translateY(-24px) scale(1);opacity:1}
+    100%{transform:translateY(-24px) scale(.75);opacity:0}
+  }
+  .gesture-clear{
+    position:absolute;inset:0;z-index:8;display:grid;place-items:center;
+    background:rgba(13,22,31,.22);color:var(--teal);font-family:var(--num);
+    font-size:25px;font-weight:700;letter-spacing:.08em;
+    opacity:0;pointer-events:none;
+  }
+  .gesture-board.complete{animation:gestureBoardClear .9s ease-out}
+  .gesture-board.complete .gesture-tile{filter:brightness(1.18);box-shadow:0 0 0 2px var(--teal),0 7px 18px -6px #000}
+  .gesture-board.complete .gesture-clear{animation:gestureClearLabel 1.8s ease both}
+  @keyframes gestureBoardClear{
+    35%{box-shadow:0 0 0 2px var(--teal),0 0 32px rgba(90,201,180,.42)}
+  }
+  @keyframes gestureClearLabel{
+    0%,18%{opacity:0;transform:scale(.86)}
+    34%,78%{opacity:1;transform:scale(1)}
+    100%{opacity:0;transform:scale(1.04)}
   }
   .gesture-copy b{display:block;margin-bottom:5px;color:var(--bone);font-size:14px}
   .gesture-copy span{display:block;color:var(--muted);font-size:12px;line-height:1.65}
   .gesture-copy em{color:var(--teal);font-style:normal;font-weight:700}
-  @keyframes gestureTile{
-    0%,18%{transform:translate(var(--x0),var(--y0))}
-    55%,82%{transform:translate(var(--x1),var(--y1))}
-    100%{transform:translate(var(--x0),var(--y0))}
-  }
-  @keyframes gestureFinger{
-    0%,14%{transform:translate(0,0) scale(.8);opacity:0}
-    20%{transform:translate(0,0) scale(1);opacity:1}
-    55%,76%{transform:translate(0,62px) scale(1);opacity:1}
-    84%,100%{transform:translate(0,62px) scale(.8);opacity:0}
-  }
-  .intro-levels{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin:18px 0}
-  .intro-level{padding:11px 6px;border:1px solid var(--line);border-radius:7px;text-align:center;background:var(--panel)}
-  .intro-level b{display:block;color:var(--bone);font-family:var(--num);font-size:17px;line-height:1.15}
-  .intro-level b small{
-    display:block;margin-bottom:3px;color:var(--muted);font-family:var(--jp);
-    font-size:10px;font-weight:500;letter-spacing:.08em;
-  }
-  .intro-level span{display:block;margin-top:7px;color:var(--teal);font-size:14px;font-weight:700}
   #startBtn{
     width:100%;min-height:52px;border:1px solid var(--teal);border-radius:8px;
     background:#14313a;color:var(--teal);font-family:var(--jp);font-size:16px;font-weight:700;
@@ -535,9 +615,8 @@
     .board-wrap{width:100%;margin:0 auto}
     .panel{min-width:0}
     .intro-card{padding:22px}
-    .intro-gesture{grid-template-columns:118px 1fr;gap:12px}
-    .gesture-board{transform:scale(.855);transform-origin:left center;margin-right:-20px}
-    .intro-levels{grid-template-columns:1fr 1fr}
+    .intro-gesture{grid-template-columns:1fr;justify-items:center;gap:10px}
+    .gesture-copy{text-align:center}
     .celebration{
       display:block;padding:0;backdrop-filter:none;transition:none;
     }
@@ -547,6 +626,10 @@
     }
     .celebration.show .celebration-card{animation:none}
     .board.move-done{animation:boardSettleMobile .4s ease}
+  }
+  @media (max-width:520px){
+    .advanced-actions{grid-template-columns:1fr}
+    .advanced-actions .menu-normal,.advanced-actions .advanced-free{grid-column:auto}
   }
   @keyframes boardSettleMobile{
     45%{box-shadow:0 28px 68px -28px #000,inset 0 0 0 2px rgba(90,201,180,.35)}
@@ -563,7 +646,7 @@
     .board.won .tile{animation:none}
     .celebration.show .confetti{display:none}
     .celebration.show .celebration-card{animation:none}
-    .gesture-tile,.gesture-finger{animation:none}
+    .gesture-tile{transition:none}
     .move-spark{display:none}
     .reset-notice.show{animation:none;opacity:1;transform:translate(-50%,-50%)}
     .board.reset-feedback{animation:none}
@@ -574,13 +657,24 @@
 <body>
 <div class="stage">
   <header>
-    <p class="eyebrow">SHORT ROTATION PUZZLE</p>
-    <h1>ROTATE <em>9</em></h1>
+    <div class="header-top">
+      <p class="eyebrow">SHORT ROTATION PUZZLE</p>
+      <button class="help-btn" id="advancedBtn" type="button">メニュー</button>
+      <button class="help-btn" id="helpBtn" type="button">遊び方</button>
+    </div>
+    <h1>ROTATE <em>NINE</em></h1>
     <p class="challenge-title">
-      <span class="headline-stage" id="headlineStage">問題 1</span>
+      <span class="headline-stage" id="headlineStage">問題 1 / 15</span>
       <span>最短<em><span id="headlinePar">1</span>手</em>で完成。</span>
       <span class="headline-moves">現在 <b id="moves">0</b>手</span>
+      <span class="progress-nav" aria-label="問題を移動">
+        <button id="prevBtn" type="button">← 前へ</button>
+        <button id="nextBtn" type="button">次へ →</button>
+      </span>
     </p>
+    <div class="stage-progress" id="stageProgress" aria-label="全15問の進捗">
+      <div class="progress-track" id="progressTrack"></div>
+    </div>
   </header>
 
   <div class="play">
@@ -589,83 +683,62 @@
     </div>
 
     <div class="panel">
+      <div class="status-head">
+        <span>GUIDE</span>
+        <button id="strategyBtn" type="button">？ この問題のヒント</button>
+      </div>
       <p class="status" id="status"></p>
 
       <div class="controls">
         <div class="primary-actions">
-          <button class="btn" id="undoBtn">1手もどす <span class="key">U</span></button>
+          <button class="btn" id="undoBtn">1手もどす</button>
           <button class="btn" id="resetBtn">やり直す</button>
-          <button class="btn" id="mixBtn">シャッフルする <span class="key">R</span></button>
-          <button class="btn" id="hintBtn"><span id="hintLabel">HINTをON</span> <span class="key">H</span></button>
-          <button class="btn" id="demoBtn"><span id="demoLabel">答えを見る</span> <span class="key">G</span></button>
+          <button class="btn" id="mixBtn">シャッフルする</button>
+          <button class="btn" id="hintBtn"><span id="hintLabel">次の一手を見る</span></button>
+          <button class="btn" id="demoBtn"><span id="demoLabel">答えを見る</span></button>
         </div>
 
-        <div>
-          <p class="stage-label">問題を選ぶ</p>
-          <select id="stageSelect" aria-label="ステージを選ぶ">
-            <option value="1">問題 1 — 最短1手</option>
-            <option value="2">問題 2 — 最短1手</option>
-            <option value="3">問題 3 — 最短1手</option>
-            <option value="4">問題 4 — 最短2手</option>
-            <option value="5">問題 5 — 最短2手</option>
-            <option value="6">問題 6 — 最短2手</option>
-            <option value="7">問題 7 — 最短3手</option>
-            <option value="8">問題 8 — 最短3手</option>
-            <option value="9">問題 9 — 最短3手</option>
-            <option value="10">問題 10 — 最短4手</option>
-            <option value="11">問題 11 — 最短4手</option>
-            <option value="12">問題 12 — 最短4手</option>
-            <option value="13">問題 13 — 最短5手</option>
-            <option value="14">問題 14 — 最短5手</option>
-            <option value="15">問題 15 — 最短5手</option>
-          </select>
-        </div>
-        <div class="stage-actions">
-          <button class="btn" id="prevBtn">← 前の問題 <span class="key">P</span></button>
-          <button class="btn" id="nextBtn">次の問題へ → <span class="key">N</span></button>
-        </div>
-
-        <details class="more">
-          <summary>上級者用メニュー</summary>
-          <div class="more-actions">
-            <button class="btn" id="tutorialBtn"><span id="tutorialLabel">隣同士（8・9）交換レッスン</span> <span class="key">T</span></button>
-            <button class="btn" id="diagonalBtn"><span id="diagonalLabel">斜め（5・9）交換レッスン</span></button>
-            <button class="btn" id="diagonal68Btn"><span id="diagonal68Label">斜め（6・8）交換レッスン</span></button>
-            <button class="btn" id="escapeBtn"><span id="escapeLabel">6・8・9 脱出レッスン</span></button>
-            <button class="btn" id="freeBtn">上級者用フリー</button>
-          </div>
-        </details>
       </div>
     </div>
   </div>
 </div>
 
+<div class="intro-overlay" id="advancedOverlay" role="dialog" aria-modal="true" aria-labelledby="advancedTitle">
+  <div class="intro-card advanced-card">
+    <p class="intro-kicker">MENU</p>
+    <h2 id="advancedTitle">モードを選ぶ</h2>
+    <p>通常の問題、交換レッスン、上級者用フリーを選べます。</p>
+    <div class="advanced-actions">
+      <button class="btn menu-normal" id="normalModeBtn">通常の問題</button>
+      <button class="btn" id="tutorialBtn"><span id="tutorialLabel">隣同士（8・9）交換レッスン</span></button>
+      <button class="btn" id="diagonalBtn"><span id="diagonalLabel">斜め（5・9）交換レッスン</span></button>
+      <button class="btn" id="diagonal68Btn"><span id="diagonal68Label">斜め（6・8）交換レッスン</span></button>
+      <button class="btn" id="escapeBtn"><span id="escapeLabel">6・8・9 脱出レッスン</span></button>
+      <button class="btn advanced-free" id="freeBtn">上級者用フリー</button>
+    </div>
+    <button class="advanced-close" id="advancedCloseBtn" type="button">閉じる</button>
+  </div>
+</div>
+
 <div class="intro-overlay" id="introOverlay" role="dialog" aria-modal="true" aria-labelledby="introTitle">
   <div class="intro-card">
-    <p class="intro-kicker">ROTATE 9</p>
+    <p class="intro-kicker">ROTATE NINE</p>
     <h2 id="introTitle">4枚を回して、数字をそろえる。</h2>
-    <p>交点の左右を押すと、まわりの4枚が90°回転します。この90°回転が「1手」。1〜9の順に並べばクリアです。</p>
-    <div class="intro-gesture" aria-label="盤面を交点のまわりへスワイプして4枚を回転">
+    <p>盤面をスワイプすると、近くの4枚が90°回転します。90°回転が「1手」。1〜9の順に並べばクリアです。</p>
+    <div class="intro-gesture" aria-label="3×3盤面を3手で完成させる見本">
       <div class="gesture-board" aria-hidden="true">
-        <div class="gesture-tile">1</div>
-        <div class="gesture-tile">2</div>
-        <div class="gesture-tile">5</div>
-        <div class="gesture-tile">4</div>
-        <div class="gesture-orbit"></div>
-        <div class="gesture-pivot"></div>
-        <div class="gesture-finger"></div>
+        <div class="gesture-tile">1</div><div class="gesture-tile">2</div><div class="gesture-tile">3</div>
+        <div class="gesture-tile">4</div><div class="gesture-tile">5</div><div class="gesture-tile">6</div>
+        <div class="gesture-tile">7</div><div class="gesture-tile">8</div><div class="gesture-tile">9</div>
+        <i class="gesture-pivot"></i><i class="gesture-pivot"></i>
+        <i class="gesture-pivot"></i><i class="gesture-pivot"></i>
+        <i class="gesture-finger"></i>
+        <strong class="gesture-clear">CLEAR!</strong>
       </div>
       <div class="gesture-copy">
-        <b>盤面をスワイプ</b>
-        <span>盤面をスワイプすると、近くの交点を軸に4枚が回ります。</span>
+        <b id="gestureStep">3手で完成する見本</b>
+        <span>指の動きに合わせて盤面をスワイプ。3手で1〜9がそろいます。</span>
       </div>
-    </div>
-    <div class="intro-levels" aria-label="全15問の構成">
-      <div class="intro-level"><b><small>問題</small>1–3</b><span>最短1手</span></div>
-      <div class="intro-level"><b><small>問題</small>4–6</b><span>最短2手</span></div>
-      <div class="intro-level"><b><small>問題</small>7–9</b><span>最短3手</span></div>
-      <div class="intro-level"><b><small>問題</small>10–12</b><span>最短4手</span></div>
-      <div class="intro-level"><b><small>問題</small>13–15</b><span>最短5手</span></div>
     </div>
     <button id="startBtn" type="button">全15問のパズルを始める</button>
   </div>
@@ -679,15 +752,19 @@
   var elMoves = document.getElementById('moves');
   var headlinePar = document.getElementById('headlinePar');
   var headlineStage = document.getElementById('headlineStage');
+  var stageProgress = document.getElementById('stageProgress');
+  var progressTrack = document.getElementById('progressTrack');
   var elStat  = document.getElementById('status');
   var undoBtn = document.getElementById('undoBtn');
   var resetBtn = document.getElementById('resetBtn');
   var mixBtn  = document.getElementById('mixBtn');
   var hintBtn = document.getElementById('hintBtn');
   var hintLabel = document.getElementById('hintLabel');
+  var strategyBtn = document.getElementById('strategyBtn');
   var demoBtn = document.getElementById('demoBtn');
   var demoLabel = document.getElementById('demoLabel');
   var tutorialBtn = document.getElementById('tutorialBtn');
+  var normalModeBtn = document.getElementById('normalModeBtn');
   var tutorialLabel = document.getElementById('tutorialLabel');
   var diagonalBtn = document.getElementById('diagonalBtn');
   var diagonalLabel = document.getElementById('diagonalLabel');
@@ -698,9 +775,34 @@
   var freeBtn = document.getElementById('freeBtn');
   var nextBtn = document.getElementById('nextBtn');
   var prevBtn = document.getElementById('prevBtn');
-  var stageSelect = document.getElementById('stageSelect');
   var introOverlay = document.getElementById('introOverlay');
   var startBtn = document.getElementById('startBtn');
+  var helpBtn = document.getElementById('helpBtn');
+  var advancedBtn = document.getElementById('advancedBtn');
+  var advancedOverlay = document.getElementById('advancedOverlay');
+  var advancedCloseBtn = document.getElementById('advancedCloseBtn');
+  var gestureTiles = Array.prototype.slice.call(document.querySelectorAll('.gesture-tile'));
+  var gesturePivots = Array.prototype.slice.call(document.querySelectorAll('.gesture-pivot'));
+  var gestureFinger = document.querySelector('.gesture-finger');
+  var gestureBoard = document.querySelector('.gesture-board');
+  var gestureStep = document.getElementById('gestureStep');
+  var progressSteps = [];
+  for (var progressIndex = 1; progressIndex <= 15; progressIndex++){
+    var progressStep = document.createElement('button');
+    progressStep.type = 'button';
+    progressStep.className = 'progress-step';
+    progressStep.dataset.stage = String(progressIndex);
+    progressStep.addEventListener('click', function(){
+      if (busy || demoOn || tutorialOn || introOn) return;
+      var selectedStage = Number(this.dataset.stage);
+      if (!freeMode && selectedStage === stageNo) return;
+      stageNo = selectedStage;
+      puzzlePar = stageNo >= 13 ? 5 : (stageNo >= 10 ? 4 : Math.min(3, Math.ceil(stageNo / 3)));
+      scramble(puzzlePar, true);
+    });
+    progressTrack.appendChild(progressStep);
+    progressSteps.push(progressStep);
+  }
 
   var reduce = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
   var coarsePointer = !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
@@ -715,7 +817,9 @@
   var stageRecords = Object.create(null);
   var qualityMode = false, hintUsed = false;
   var freeMode = false, freeInitial = null;
-  var introOn = false;
+  var introOn = false, introReview = false;
+  var gestureTimer = null;
+  var advancedOn = false;
   var audioContext = null;
   var scrambleMoves = [];    // 完成形から最初の盤面までの手順
   var demoOn = false, demoUsed = false, demoTimer = null;
@@ -790,6 +894,7 @@
   var celebrationMessage = null, celebrationNext = null, celebrationClose = null;
   var allClearExtra = null;
   var celebrationResetOnClose = false;
+  var celebrationOpenMenuOnClose = false;
   function build(){
     var frag = document.createDocumentFragment();
     qualityLabel = document.createElement('div');
@@ -809,7 +914,7 @@
         '<div class="celebration-label" id="clearTitle">CLEAR!</div>' +
         '<p class="celebration-message">問題をクリアしました。</p>' +
         '<div class="all-clear-extra">' +
-          '<p>上級モードは、あとから「上級者用メニュー」でもいつでも開けます。</p>' +
+          '<p>レッスンや上級者用フリーは、あとから右上の「メニュー」でいつでも開けます。</p>' +
           '<div class="all-clear-links">' +
             '<button type="button" data-clear-action="free">上級者用フリーに挑戦</button>' +
             '<button type="button" data-clear-action="adjacent">隣同士（8・9）交換</button>' +
@@ -828,6 +933,7 @@
     celebrationNext = celebration.querySelector('.celebration-next');
     celebrationClose = celebration.querySelector('.celebration-close');
     celebrationNext.addEventListener('click', function(){
+      celebrationOpenMenuOnClose = false;
       closeCelebration();
       nextPuzzle();
     });
@@ -835,6 +941,7 @@
     Array.prototype.forEach.call(celebration.querySelectorAll('[data-clear-action]'), function(button){
       button.addEventListener('click', function(){
         var action = button.getAttribute('data-clear-action');
+        celebrationOpenMenuOnClose = false;
         closeCelebration();
         if (action === 'free') startFreeGame(false);
         else startTutorial(action);
@@ -926,23 +1033,34 @@
       }
     }
     headlinePar.textContent = tutorialOn ? '5' : (freeMode ? '?' : puzzlePar);
-    headlineStage.textContent = tutorialOn ? 'LESSON' : (freeMode ? '上級者用フリー' : '問題 ' + stageNo);
+    headlineStage.textContent = tutorialOn ? 'LESSON' :
+      (freeMode ? '上級者用フリー' : '問題 ' + stageNo + ' / 15');
+    stageProgress.hidden = tutorialOn || freeMode;
+    if (!tutorialOn && !freeMode){
+      progressSteps.forEach(function(stepEl, index){
+        stepEl.classList.toggle('done', clearedStages.has(index + 1));
+        stepEl.classList.toggle('current', index + 1 === stageNo);
+        if (index + 1 === stageNo) stepEl.setAttribute('aria-current', 'step');
+        else stepEl.removeAttribute('aria-current');
+        stepEl.disabled = busy || demoOn || introOn;
+      });
+    }
     elMoves.textContent = moves;
     undoBtn.disabled = history.length === 0 || busy || demoOn || tutorialOn;
     resetBtn.disabled = busy || demoOn || tutorialOn;
     hintBtn.disabled = busy || solved || demoOn || tutorialOn;
-    nextBtn.disabled = !clearedStages.has(stageNo) || tutorialOn || freeMode || stageNo >= 15;
+    strategyBtn.disabled = busy || solved || demoOn || tutorialOn || freeMode;
+    nextBtn.disabled = busy || demoOn || tutorialOn || freeMode || stageNo >= 15;
     prevBtn.disabled = stageNo <= 1 || busy || demoOn || tutorialOn || freeMode;
-    stageSelect.disabled = busy || demoOn || tutorialOn;
     tutorialBtn.disabled = busy || demoOn || (tutorialOn && tutorialKind !== 'adjacent');
     diagonalBtn.disabled = busy || demoOn || (tutorialOn && tutorialKind !== 'diagonal');
     diagonal68Btn.disabled = busy || demoOn || (tutorialOn && tutorialKind !== 'diagonal68');
     escapeBtn.disabled = busy || demoOn || (tutorialOn && tutorialKind !== 'escape');
     freeBtn.disabled = busy || demoOn || tutorialOn;
     if (introOn){
-      undoBtn.disabled = resetBtn.disabled = hintBtn.disabled = mixBtn.disabled = demoBtn.disabled =
+      undoBtn.disabled = resetBtn.disabled = hintBtn.disabled = strategyBtn.disabled = mixBtn.disabled = demoBtn.disabled =
         tutorialBtn.disabled = diagonalBtn.disabled = diagonal68Btn.disabled = escapeBtn.disabled = freeBtn.disabled =
-        prevBtn.disabled = nextBtn.disabled = stageSelect.disabled = true;
+        prevBtn.disabled = nextBtn.disabled = true;
     }
   }
 
@@ -1038,7 +1156,7 @@
     if (answerViewed){
       say('答えを確認しました。「この問題の最初から」で、自力クリアに挑戦できます。');
     } else if (hintUsed){
-      say('HINTを使ったため練習クリアです。「この問題の最初から」で再挑戦できます。');
+      say('次の一手を使ったため練習クリアです。「この問題の最初から」で再挑戦できます。');
     } else if (freeMode){
       say('上級者用フリーをクリア！ 手数制限なしで完成しました。', true);
     } else if (allClear){
@@ -1057,14 +1175,13 @@
     if (celebration) celebration.classList.remove('show');
     qualityMode = false; hintUsed = false;
     hintBtn.classList.remove('live');
-    hintLabel.textContent = 'HINTをON';
+    hintLabel.textContent = '次の一手を見る';
     board.classList.remove('won');
     tiles.forEach(function(t){ t.style.animation = 'none'; void t.offsetWidth; t.style.animation = ''; });
     setKnobsEnabled(true);
     solved = false; moves = 0; history = []; busy = false; demoUsed = false;
     puzzlePar = Math.max(1, Math.min(5, n || puzzlePar));
-    stageSelect.value = String(stageNo);
-    nextBtn.innerHTML = '次の問題へ → <span class="key">N</span>';
+    nextBtn.textContent = '次へ →';
     var chosen = useSaved && stageRecords[stageNo];
     if (!chosen){
       var root = [], i;
@@ -1116,7 +1233,7 @@
       var curatedThree = approachable(layerThree, 2);
       if (puzzlePar === 3) frontier = curatedThree;
       if (puzzlePar >= 4){
-        var desiredChoices = (stageNo === 12 || stageNo >= 14) ? 2 : 1;
+        var desiredChoices = (stageNo === 12 || stageNo === 15) ? 2 : 1;
         var smooth = [new Set([root.join('')])];
         for (var smoothDepth = 1; smoothDepth < puzzlePar; smoothDepth++){
           var smoothSet = new Set();
@@ -1168,13 +1285,19 @@
 
     relayout();
     refresh();
-    say('問題 ' + stageNo + ' — 最短' + puzzlePar + '手。' +
+    say((stageNo === 15 ? '最後の問題' : '問題 ' + stageNo) + ' — 最短' + puzzlePar + '手。' +
       (stageNo === 1
         ? '盤面をスワイプして、4枚を90°回してみましょう。'
         : puzzlePar >= 3
         ? '回した後の4枚を想像して、次の1手を選んでください。'
         : '回した後の4枚を想像してみてください。'));
-    if (!introOn) showStartFeedback();
+    if (!introOn) {
+      strategyBtn.classList.remove('attention');
+      void strategyBtn.offsetWidth;
+      strategyBtn.classList.add('attention');
+      if (stageNo === 15) showFinalFeedback();
+      else showStartFeedback();
+    }
   }
 
   /* ---------- 時間 ---------- */
@@ -1183,25 +1306,31 @@
     elStat.classList.toggle('win', !!win);
   }
 
-  function showBoardNotice(text, isStart){
+  function showBoardNotice(text, isStart, isFinal){
     if (!resetNotice) return;
     if (boardNoticeTimer) clearTimeout(boardNoticeTimer);
-    board.classList.remove('reset-feedback');
-    resetNotice.classList.remove('show', 'start');
-    resetNotice.textContent = text;
+    board.classList.remove('reset-feedback', 'final-feedback');
+    resetNotice.classList.remove('show', 'start', 'final');
+    if (isFinal){
+      resetNotice.innerHTML = '<strong>FINAL PUZZLE</strong><small>これが最後の問題</small>';
+    } else {
+      resetNotice.textContent = text;
+    }
     resetNotice.classList.toggle('start', !!isStart);
+    resetNotice.classList.toggle('final', !!isFinal);
     void board.offsetWidth;
-    board.classList.add('reset-feedback');
+    board.classList.add(isFinal ? 'final-feedback' : 'reset-feedback');
     resetNotice.classList.add('show');
     boardNoticeTimer = setTimeout(function(){
-      board.classList.remove('reset-feedback');
-      resetNotice.classList.remove('show', 'start');
+      board.classList.remove('reset-feedback', 'final-feedback');
+      resetNotice.classList.remove('show', 'start', 'final');
       boardNoticeTimer = null;
-    }, 920);
+    }, isFinal ? 2180 : 920);
   }
 
   function showResetFeedback(){ showBoardNotice('やり直し', false); }
   function showStartFeedback(){ showBoardNotice('START', true); }
+  function showFinalFeedback(){ showBoardNotice('FINAL', false, true); }
 
   function playMoveSound(homeHits){
     if (introOn || demoOn) return;
@@ -1283,14 +1412,19 @@
         say('この問題を最初の盤面へ戻しました。もう一度、自力で挑戦できます。');
         showResetFeedback();
       }, 0);
+    } else if (celebrationOpenMenuOnClose && !introOn){
+      celebrationOpenMenuOnClose = false;
+      setTimeout(openAdvanced, 120);
     }
   }
 
   function winFeedback(allClear, answerViewed, usedHint, isFree){
     if (!celebration) return;
     celebrationResetOnClose = !!(answerViewed || usedHint);
-    celebrationClose.textContent = celebrationResetOnClose ? '閉じて最初に戻る' : '閉じる';
-    allClearExtra.classList.toggle('show', !!allClear && !answerViewed && !usedHint && !isFree);
+    celebrationOpenMenuOnClose = !celebrationResetOnClose && !!(allClear || isFree);
+    celebrationClose.textContent = celebrationResetOnClose ? '閉じて最初に戻る' :
+      (celebrationOpenMenuOnClose ? 'メニューへ' : '閉じる');
+    allClearExtra.classList.remove('show');
     celebration.querySelector('.celebration-label').textContent =
       answerViewed ? 'ANSWER' : (usedHint ? 'PRACTICE' : (allClear && !tutorialOn ? 'ALL CLEAR!' : 'CLEAR!'));
     if (introOn){
@@ -1304,7 +1438,7 @@
       celebrationClose.hidden = false;
     } else if (usedHint){
       celebrationMessage.textContent =
-        'HINTを使ったため練習扱いです。閉じるとこの問題の最初に戻ります。';
+        '「次の一手」を使ったため練習扱いです。閉じるとこの問題の最初に戻ります。';
       celebrationNext.hidden = true;
       celebrationClose.hidden = false;
     } else if (isFree){
@@ -1327,6 +1461,22 @@
     celebration.classList.add('show');
     if (navigator.vibrate) navigator.vibrate([28,35,65]);
     if (introOn) setTimeout(closeCelebration, reduce ? 180 : 1050);
+  }
+
+  function tutorialWinFeedback(message){
+    if (!celebration) return;
+    celebrationResetOnClose = false;
+    celebrationOpenMenuOnClose = true;
+    allClearExtra.classList.remove('show');
+    celebration.querySelector('.celebration-label').textContent = 'LESSON CLEAR!';
+    celebrationMessage.textContent = message;
+    celebrationNext.hidden = true;
+    celebrationClose.hidden = false;
+    celebrationClose.textContent = 'メニューへ';
+    celebration.classList.remove('show');
+    void celebration.offsetWidth;
+    celebration.classList.add('show');
+    if (navigator.vibrate) navigator.vibrate([28,35,65]);
   }
 
   /* ---------- プレビュー ---------- */
@@ -1554,7 +1704,14 @@
   }
 
   document.addEventListener('keydown', function(e){
-    if (introOn) return;
+    if (introOn){
+      if (introReview && e.key === 'Escape'){ e.preventDefault(); beginGame(); }
+      return;
+    }
+    if (advancedOn){
+      if (e.key === 'Escape'){ e.preventDefault(); closeAdvanced(); }
+      return;
+    }
     if (e.metaKey || e.ctrlKey || e.altKey) return;
     var key = e.key.toLowerCase();
     if (celebration && celebration.classList.contains('show')){
@@ -1747,6 +1904,29 @@
     else startDemo();
   }
 
+  function showStrategyHint(){
+    if (busy || solved || demoOn || tutorialOn || freeMode) return;
+    var text;
+    if (stageNo <= 3){
+      text = '✓は、数字が正しい場所にある印。回して✓を増やそう。';
+    } else if (stageNo <= 6){
+      text = '✓が増える向きを探そう。違ったら「1手もどす」でやり直せるよ。';
+    } else if (stageNo <= 9){
+      text = '✓が増える回し方が1つあるよ。迷ったら「やり直す」で最初の状態に戻せるよ。';
+    } else if (stageNo === 12){
+      text = '✓が増える回し方は2つ。次の手でも✓を増やせそうなのは、どっちかな？';
+    } else if (stageNo === 15){
+      text = '✓が増える回し方は2つ。次の手でも✓を増やせそうなのは、どっちかな？';
+    } else {
+      text = '1手ごとに、✓が増える回し方を選ぼう。';
+    }
+    strategyBtn.classList.remove('attention');
+    say('ヒント：' + text);
+    elStat.classList.remove('hint-reveal');
+    void elStat.offsetWidth;
+    elStat.classList.add('hint-reveal');
+  }
+
   function showHint(){
     if (busy || solved || demoOn || tutorialOn) return;
     if (freeMode && !fullSolverDistance){
@@ -1757,12 +1937,12 @@
     qualityMode = !qualityMode;
     clearPreview();
     hintBtn.classList.toggle('live', qualityMode);
-    hintLabel.textContent = qualityMode ? 'HINTをOFF' : 'HINTをON';
+    hintLabel.textContent = qualityMode ? '次の一手を隠す' : '次の一手を見る';
     say(qualityMode
       ? (coarsePointer
-        ? 'HINTをONにしました。盤面を少しスワイプすると、指を離す前にその方向を評価します。'
-        : '距離表示をONにしました。盤上をマウスで探ると、緑・黄・赤で候補手を評価します。')
-      : '距離表示をOFFにしました。ここからは盤面だけを見て考えてみてください。');
+        ? '盤面を少しスワイプすると、指を離す前にその一手を評価します。'
+        : '盤上をマウスで探ると、次の一手を緑・黄・赤で評価します。')
+      : '次の一手を隠しました。ここからは盤面だけを見て考えてみてください。');
   }
 
   function tutorialAllows(p, cw, turns){
@@ -1815,11 +1995,13 @@
       elStat.innerHTML =
         '<div class="hint-title">成功：6・8・9の詰まりを最短6手で脱出しました。</div>' +
         '<div class="hint-reason">下段だけで直そうとせず、3手で大きく崩してから3手で回収するのがポイントです。</div>';
+      tutorialWinFeedback('6・8・9の詰まりを最短6手で脱出しました。');
     } else {
       var pair = tutorialKind === 'adjacent' ? '8と9' : (tutorialKind === 'diagonal' ? '5と9' : '6と8');
       elStat.innerHTML =
         '<div class="hint-title">成功：' + pair + 'だけを交換できました。</div>' +
         '<div class="hint-reason">途中で崩しても、逆向きの回転で周囲を回収すれば、狙った2枚だけを交換できます。</div>';
+      tutorialWinFeedback(pair + 'だけを交換できました。交換レッスン完了です！');
     }
   }
 
@@ -1833,7 +2015,7 @@
       (tutorialKind === 'diagonal68' ? diagonal68TutorialSteps : escapeTutorialSteps));
     qualityMode = false;
     hintBtn.classList.remove('live');
-    hintLabel.textContent = 'HINTをON';
+    hintLabel.textContent = '次の一手を見る';
     board.classList.remove('won');
     tiles.forEach(function(t){ t.style.animation = 'none'; void t.offsetWidth; t.style.animation = ''; });
     tutorialOn = true; tutorialStep = 0; solved = false; moves = 0; history = [];
@@ -1882,7 +2064,7 @@
     clearPreview();
     qualityMode = false; hintUsed = false; demoUsed = false;
     hintBtn.classList.remove('live');
-    hintLabel.textContent = 'HINTをON';
+    hintLabel.textContent = '次の一手を見る';
     freeMode = true; solved = false; moves = 0; history = []; busy = false;
     if (useSaved && freeInitial){
       state = freeInitial.slice();
@@ -1909,20 +2091,20 @@
   }
 
   function nextPuzzle(){
-    if (!clearedStages.has(stageNo) || tutorialOn || busy || stageNo >= 15) return;
+    if (tutorialOn || freeMode || busy || demoOn || stageNo >= 15) return;
     stageNo++;
     puzzlePar = stageNo >= 13 ? 5 : (stageNo >= 10 ? 4 : Math.min(3, Math.ceil(stageNo / 3)));
     scramble(puzzlePar, true);
   }
 
   function updateStageOptions(){
-    Array.prototype.forEach.call(stageSelect.options, function(option){
-      var number = Number(option.value);
+    progressSteps.forEach(function(step, index){
+      var number = index + 1;
       var par = number >= 13 ? 5 : (number >= 10 ? 4 : Math.min(3, Math.ceil(number / 3)));
-      option.textContent = (clearedStages.has(number) ? '✓ ' : '　') +
-        '問題 ' + number + ' — 最短' + par + '手';
+      step.setAttribute('aria-label',
+        '問題' + number + '、最短' + par + '手' + (clearedStages.has(number) ? '、クリア済み' : ''));
+      step.title = '問題 ' + number + ' — 最短' + par + '手';
     });
-    stageSelect.value = String(stageNo);
   }
 
   function prevPuzzle(){
@@ -1934,43 +2116,121 @@
 
   function runIntro(){
     introOn = true;
-    stageNo = 7; puzzlePar = 3;
-    scramble(3, false);
-    say('まずは見本です。90°回転を3手続けて完成します。');
-    setTimeout(function(){
-      if (!introOn) return;
-      var queue = autoQueue();
-      if (!queue.length){ showIntroCard(); return; }
-      playIntroMoves(queue, 0);
-    }, reduce ? 100 : 650);
+    stageNo = 1; puzzlePar = 1;
+    scramble(1, false);
+    showIntroCard();
   }
 
-  function playIntroMoves(queue, index){
-    if (!introOn) return;
-    if (index >= queue.length){
-      winFeedback();
-      setTimeout(function(){ if (introOn) showIntroCard(); }, reduce ? 250 : 1250);
-      return;
+  function startGestureDemo(){
+    if (gestureTimer) clearTimeout(gestureTimer);
+    gestureBoard.classList.add('resetting');
+    var solution = [
+      { p:0, cw:true },
+      { p:3, cw:true },
+      { p:1, cw:true }
+    ];
+    var demoState = [0,1,2,3,4,5,6,7,8];
+    for (var i = solution.length - 1; i >= 0; i--){
+      demoState = permuteArray(demoState, solution[i].p, !solution[i].cw);
     }
-    var mv = queue[index];
-    say('見本：90°回転 ' + (index + 1) + ' / ' + queue.length + '手');
-    rotate(mv.p, mv.cw, { force:true, after:function(){
-      setTimeout(function(){ playIntroMoves(queue, index + 1); }, reduce ? 40 : 220);
-    }});
+    var step = 0;
+    function positionGestureTiles(){
+      gestureTiles.forEach(function(tile, id){
+        var pos = demoState.indexOf(id);
+        var x = 14 + (pos % 3) * 56;
+        var y = 14 + Math.floor(pos / 3) * 56;
+        tile.style.transform = 'translate(' + x + 'px,' + y + 'px)';
+      });
+    }
+    function renderGesture(){
+      gestureBoard.classList.toggle('complete', step >= 3);
+      positionGestureTiles();
+      gesturePivots.forEach(function(pivot, p){
+        pivot.classList.remove('active');
+        pivot.removeAttribute('data-arrow');
+      });
+      if (step < 3){
+        var pivotX = solution[step].p % 2 ? 123 : 67;
+        var pivotY = solution[step].p >= 2 ? 123 : 67;
+        /* left/top は丸の左上なので、半径9pxを引いて中心を交点の右27pxへ合わせる */
+        gestureFinger.style.left = (pivotX + 18) + 'px';
+        gestureFinger.style.top = (pivotY - 9) + 'px';
+        gestureFinger.classList.remove('swipe-down', 'swipe-up');
+        void gestureFinger.offsetWidth;
+        gestureFinger.classList.add(solution[step].cw ? 'swipe-down' : 'swipe-up');
+        gestureStep.textContent = (step + 1) + '手目：ここを' +
+          (solution[step].cw ? '下へ' : '上へ') + 'スワイプ';
+        gestureTimer = setTimeout(function(){
+          /* 指と軸は現在の手に残したまま、スワイプに追従して盤面を回す */
+          demoState = permuteArray(demoState, solution[step].p, solution[step].cw);
+          positionGestureTiles();
+          gestureTimer = setTimeout(function(){
+            step++;
+            renderGesture();
+          }, reduce ? 300 : 650);
+        }, reduce ? 180 : 300);
+      } else {
+        gestureFinger.classList.remove('swipe-down', 'swipe-up');
+        gestureStep.textContent = '3手で完成！';
+        gestureTimer = setTimeout(startGestureDemo, reduce ? 1600 : 2600);
+      }
+    }
+    gestureBoard.classList.remove('complete');
+    positionGestureTiles();
+    gesturePivots.forEach(function(pivot){
+      pivot.classList.remove('active');
+      pivot.removeAttribute('data-arrow');
+    });
+    gestureFinger.classList.remove('swipe-down', 'swipe-up');
+    gestureStep.textContent = 'この盤面からスタート';
+    /* 完成盤面から初期盤面へは回転させず、一瞬で戻す */
+    void gestureBoard.offsetWidth;
+    gestureBoard.classList.remove('resetting');
+    /* 戻った盤面を少し見せてから、1手目のスワイプを始める */
+    gestureTimer = setTimeout(renderGesture, reduce ? 500 : 850);
   }
 
   function showIntroCard(){
     introOverlay.classList.add('show');
+    startGestureDemo();
     setTimeout(function(){ startBtn.focus(); }, 50);
+  }
+
+  function showHelp(){
+    if (introOn || busy || demoOn) return;
+    introReview = true;
+    introOn = true;
+    startBtn.textContent = 'ゲームに戻る';
+    showIntroCard();
+  }
+
+  function openAdvanced(){
+    if (introOn || busy || demoOn) return;
+    advancedOn = true;
+    advancedOverlay.classList.add('show');
+    setTimeout(function(){ advancedCloseBtn.focus(); }, 50);
+  }
+
+  function closeAdvanced(){
+    advancedOn = false;
+    advancedOverlay.classList.remove('show');
+    advancedBtn.focus();
   }
 
   function beginGame(){
     introOverlay.classList.remove('show');
+    if (gestureTimer){ clearTimeout(gestureTimer); gestureTimer = null; }
     introOn = false;
+    if (introReview){
+      introReview = false;
+      startBtn.textContent = '全15問のパズルを始める';
+      refresh();
+      return;
+    }
     stageRecords = Object.create(null);
-    undoBtn.disabled = resetBtn.disabled = hintBtn.disabled = mixBtn.disabled = demoBtn.disabled =
+    undoBtn.disabled = resetBtn.disabled = hintBtn.disabled = strategyBtn.disabled = mixBtn.disabled = demoBtn.disabled =
       tutorialBtn.disabled = diagonalBtn.disabled = diagonal68Btn.disabled = escapeBtn.disabled = freeBtn.disabled =
-      prevBtn.disabled = nextBtn.disabled = stageSelect.disabled = false;
+      prevBtn.disabled = nextBtn.disabled = false;
     stageNo = 1; puzzlePar = 1;
     scramble(1, false);
   }
@@ -1988,7 +2248,8 @@
     demoOn = true; demoUsed = true;
     clearPreview();
     setKnobsEnabled(false);
-    undoBtn.disabled = true; resetBtn.disabled = true; mixBtn.disabled = true; hintBtn.disabled = true;
+    undoBtn.disabled = true; resetBtn.disabled = true; mixBtn.disabled = true;
+    hintBtn.disabled = true; strategyBtn.disabled = true;
     demoBtn.classList.add('live');
     demoLabel.textContent = '停止';
 
@@ -2038,7 +2299,7 @@
       board.classList.remove('won');
       tiles.forEach(function(t){ t.style.animation = 'none'; void t.offsetWidth; t.style.animation = ''; });
       setKnobsEnabled(true);
-      nextBtn.innerHTML = '次の問題へ → <span class="key">N</span>';
+      nextBtn.textContent = '次へ →';
     }
     var last = history.pop();
     moves = Math.max(0, moves - 1);
@@ -2062,33 +2323,43 @@
   undoBtn.addEventListener('click', undo);
   resetBtn.addEventListener('click', resetPuzzle);
   mixBtn.addEventListener('click', function(){ if (freeMode) startFreeGame(false); else scramble(); });
+  strategyBtn.addEventListener('click', showStrategyHint);
   hintBtn.addEventListener('click', showHint);
   demoBtn.addEventListener('click', toggleDemo);
   tutorialBtn.addEventListener('click', function(){
+    closeAdvanced();
+    if (tutorialOn) stopTutorial(false);
+    startTutorial('adjacent');
+  });
+  normalModeBtn.addEventListener('click', function(){
+    closeAdvanced();
     if (tutorialOn) stopTutorial(true);
-    else startTutorial('adjacent');
+    else if (freeMode) scramble(puzzlePar, true);
   });
   diagonalBtn.addEventListener('click', function(){
-    if (tutorialOn) stopTutorial(true);
-    else startTutorial('diagonal');
+    closeAdvanced();
+    if (tutorialOn) stopTutorial(false);
+    startTutorial('diagonal');
   });
   diagonal68Btn.addEventListener('click', function(){
-    if (tutorialOn) stopTutorial(true);
-    else startTutorial('diagonal68');
+    closeAdvanced();
+    if (tutorialOn) stopTutorial(false);
+    startTutorial('diagonal68');
   });
   escapeBtn.addEventListener('click', function(){
-    if (tutorialOn) stopTutorial(true);
-    else startTutorial('escape');
+    closeAdvanced();
+    if (tutorialOn) stopTutorial(false);
+    startTutorial('escape');
   });
-  freeBtn.addEventListener('click', function(){ startFreeGame(false); });
+  freeBtn.addEventListener('click', function(){ closeAdvanced(); startFreeGame(false); });
   nextBtn.addEventListener('click', nextPuzzle);
   prevBtn.addEventListener('click', prevPuzzle);
   startBtn.addEventListener('click', beginGame);
-  stageSelect.addEventListener('change', function(){
-    if (busy || demoOn || tutorialOn) return;
-    stageNo = Number(stageSelect.value);
-    puzzlePar = stageNo >= 13 ? 5 : (stageNo >= 10 ? 4 : Math.min(3, Math.ceil(stageNo / 3)));
-    scramble(puzzlePar, true);
+  helpBtn.addEventListener('click', showHelp);
+  advancedBtn.addEventListener('click', openAdvanced);
+  advancedCloseBtn.addEventListener('click', closeAdvanced);
+  advancedOverlay.addEventListener('click', function(e){
+    if (e.target === advancedOverlay) closeAdvanced();
   });
 
   /* ---------- 起動 ---------- */
