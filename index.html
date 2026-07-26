@@ -1403,7 +1403,7 @@
       animation.onfinish = animation.oncancel = function(){
         if (++done === 4){
           for (var q = 0; q < 4; q++) place(state[cyc[q]], cyc[q]);
-          clearPreview();
+          restoreTutorialHintPreview();
           busy = false;
           refresh();
           finishTutorialRejectNotice();
@@ -1919,11 +1919,15 @@
     if (introOn || busy || solved || demoOn || drag) return;
     if (e.pointerType === 'mouse' && e.button !== 0) return;
     if (e.target.closest && e.target.closest('.half')) return;   // つまみのボタンは従来どおり
-    if (tutorialOn && tutorialRejecting) clearTutorialRejectNotice();
 
     var pt = localPoint(e);
     var p = nearestPivot(pt.x, pt.y), kc = knobXY(p);
-    if (Math.hypot(pt.x - kc.x, pt.y - kc.y) < 10) return;       // 軸のど真ん中は角度が定まらない
+    var pivotDistance = Math.hypot(pt.x - kc.x, pt.y - kc.y);
+    if (e.pointerType === 'touch' && tutorialOn && tutorialHintVisible &&
+        tutorialStep < tutorialSteps.length && p !== tutorialSteps[tutorialStep].p &&
+        pivotDistance <= 32) return;                              // 他の軸のタップには反応しない
+    if (tutorialOn && tutorialRejecting) clearTutorialRejectNotice();
+    if (pivotDistance < 10) return;                               // 軸のど真ん中は角度が定まらない
 
     var cyc = cellsOf(p), items = [];
     for (var j = 0; j < 4; j++){
@@ -2030,6 +2034,7 @@
           clearPreview();
           moveFeedback(cyc, dg.p);
           if (tutorialRejected){
+            restoreTutorialHintPreview();
             busy = false;
             refresh();
             finishTutorialRejectNotice();
@@ -2049,9 +2054,10 @@
   board.addEventListener('pointercancel', endDrag);
   board.addEventListener('pointerleave', function(){
     if (!drag){
-      clearPreview();
       showCandidate(-1);
       hoverPreviewP = -1;
+      if (tutorialOn && tutorialHintVisible) restoreTutorialHintPreview();
+      else clearPreview();
     }
   });
 
@@ -2360,15 +2366,19 @@
     return false;
   }
 
+  function restoreTutorialHintPreview(){
+    clearPreview();
+    if (!tutorialOn || !tutorialHintVisible || tutorialStep >= tutorialSteps.length) return;
+    var step = tutorialSteps[tutorialStep];
+    preview(step.p, true, step.cw);
+    knobs[step.p].classList.add('hinting');
+    knobs[step.p].classList.add(step.cw ? 'press-cw' : 'press-ccw');
+  }
+
   function renderTutorial(){
     if (!tutorialOn || tutorialRejecting || tutorialStep >= tutorialSteps.length) return;
     var step = tutorialSteps[tutorialStep];
-    clearPreview();
-    if (tutorialHintVisible){
-      preview(step.p, true, step.cw);
-      knobs[step.p].classList.add('hinting');
-      knobs[step.p].classList.add(step.cw ? 'press-cw' : 'press-ccw');
-    }
+    restoreTutorialHintPreview();
     var chips = tutorialSteps.map(function(_, i){
       return '<span class="hint-step"' + (i < tutorialStep ? ' style="opacity:.35"' : '') + '>' +
         (i + 1) + (i < tutorialStep ? ' ✓' : '') + '</span>';
