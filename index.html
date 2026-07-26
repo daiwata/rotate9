@@ -66,6 +66,27 @@
   }
   .help-btn:hover{border-color:var(--teal);color:var(--teal)}
   .help-btn:focus-visible{outline:2px solid var(--teal);outline-offset:2px}
+  .language-picker{position:relative;z-index:45;flex:0 0 auto}
+  .language-toggle{
+    display:grid;place-items:center;width:34px;height:34px;padding:0;
+    border:1px solid var(--line);border-radius:50%;background:rgba(22,32,46,.72);
+    color:var(--muted);font-size:17px;line-height:1;cursor:pointer;
+  }
+  .language-toggle:hover,.language-toggle[aria-expanded="true"]{border-color:var(--teal);color:var(--teal)}
+  .language-toggle:focus-visible{outline:2px solid var(--teal);outline-offset:2px}
+  .language-menu{
+    position:absolute;z-index:35;top:calc(100% + 7px);right:0;
+    display:none;width:150px;padding:5px;border:1px solid var(--line);border-radius:9px;
+    background:#172334;box-shadow:0 18px 44px rgba(0,0,0,.45);
+  }
+  .language-menu.show{display:grid}
+  .language-menu button{
+    min-height:38px;padding:7px 10px;border:0;border-radius:6px;background:transparent;
+    color:var(--muted);font:700 12px/1.2 var(--jp);text-align:left;cursor:pointer;
+  }
+  .language-menu button:hover{background:rgba(90,201,180,.09);color:var(--bone)}
+  .language-menu button[aria-checked="true"]{background:#14313a;color:var(--teal)}
+  .language-menu button:focus-visible{outline:2px solid var(--teal);outline-offset:-2px}
   h1{
     margin:0;font-family:var(--logo);font-size:clamp(32px,6.5vw,52px);font-weight:700;
     letter-spacing:.12em;line-height:1;color:var(--bone);
@@ -241,9 +262,17 @@
   }
   .reset-notice.show{animation:resetNotice .9s ease both}
   .reset-notice.start{
-    padding:11px 24px;border-color:var(--teal);color:var(--teal);
-    font-family:var(--num);font-size:20px;letter-spacing:.14em;
+    display:flex;flex-direction:column;align-items:center;gap:5px;
+    min-width:230px;padding:15px 24px;border-radius:12px;
+    border-color:var(--teal);color:var(--teal);
     box-shadow:0 0 26px rgba(90,201,180,.28);
+  }
+  .reset-notice.start.show{animation:resetNotice 1.55s ease both}
+  .reset-notice.start strong{
+    font-family:var(--num);font-size:22px;font-weight:800;letter-spacing:.16em;
+  }
+  .reset-notice.start small{
+    color:var(--bone);font-family:var(--jp);font-size:13px;font-weight:700;letter-spacing:.04em;
   }
   .reset-notice.final{
     display:flex;flex-direction:column;align-items:center;gap:5px;
@@ -733,6 +762,13 @@
     .progress-nav{flex-basis:auto;justify-content:flex-start;margin-top:0}
     .progress-nav .headline-stage{min-width:46px;padding-inline:5px}
     .progress-nav button{min-height:38px;padding:5px 7px;font-size:10px}
+    :lang(en) .challenge-title>span:first-child,
+    :lang(zh) .challenge-title>span:first-child,
+    :lang(ko) .challenge-title>span:first-child{font-size:16px}
+    :lang(en) .progress-nav button,
+    :lang(zh) .progress-nav button,
+    :lang(ko) .progress-nav button{padding-inline:5px;font-size:9px}
+    :lang(ko) .challenge-title>span:first-child{font-size:14px}
     .play{row-gap:12px}
     .board-wrap{width:100%;margin:0 auto}
     .panel{min-width:0}
@@ -870,13 +906,22 @@
   <header>
     <div class="header-top">
       <p class="eyebrow">SHORT ROTATION PUZZLE</p>
+      <div class="language-picker">
+        <button class="language-toggle" id="languageToggle" type="button" aria-label="言語を選ぶ" aria-expanded="false">🌐</button>
+        <div class="language-menu" id="languageMenu" role="radiogroup" aria-label="言語">
+          <button type="button" role="radio" data-lang="ja" aria-checked="true">日本語</button>
+          <button type="button" role="radio" data-lang="en" aria-checked="false">English</button>
+          <button type="button" role="radio" data-lang="zh" aria-checked="false">简体中文</button>
+          <button type="button" role="radio" data-lang="ko" aria-checked="false">한국어</button>
+        </div>
+      </div>
       <button class="help-btn" id="advancedBtn" type="button">メニュー</button>
       <button class="help-btn" id="helpBtn" type="button">遊び方</button>
     </div>
     <h1>ROTATE <em>NINE</em></h1>
     <p class="challenge-title">
-      <span>最短<em><span id="headlinePar">1</span>手</em>で完成</span>
-      <span class="headline-moves">現在<br><b id="moves">0</b>手</span>
+      <span id="goalDisplay">最短<em><span id="headlinePar">1</span>手</em>で完成</span>
+      <span class="headline-moves" id="movesDisplay">現在<br><b id="moves">0</b>手</span>
       <span class="progress-nav" aria-label="問題を移動">
         <button id="prevBtn" type="button" aria-label="前の問題へ">← <span class="nav-label">前へ</span></button>
         <span class="headline-stage" id="headlineStage">問題<br><b>1 / 15</b></span>
@@ -984,6 +1029,197 @@
   "use strict";
 
   var embedMode = document.documentElement.classList.contains('embed');
+  var currentLang = 'ja';
+  var UI_TEXT = {
+    ja:{
+      pageTitle:'ROTATE NINE — 4枚を回す数字パズル', language:'言語を選ぶ',
+      menu:'メニュー', help:'遊び方', goal:'最短{n}手で完成', current:'現在', stage:'問題', lesson:'LESSON',
+      free:'上級者用フリー', prev:'前へ', next:'次へ', undo:'1手もどす', reset:'やり直す',
+      shuffle:'シャッフル', hintShow:'次の一手を見る', hintHide:'次の一手を隠す',
+      answer:'答えを見る', stop:'停止', strategy:'？ この問題のヒント',
+      modeTitle:'モードを選ぶ', modeDesc:'通常の問題、交換レッスン、上級者用フリーを選べます。',
+      normal:'通常の問題', startProgress:'問題 {stage} / 15（最短{par}手）', exchange:'交換レッスン', close:'閉じる',
+      chooseLesson:'レッスンを選ぶ', adjacentTab:'隣同士<br>8・9', diagonalTab:'斜め<br>5・9',
+      diagonal68Tab:'斜め<br>6・8', escapeTab:'6・8・9<br>脱出',
+      why:'なぜ難しい？', mastery:'これができると', startLesson:'レッスンを始める',
+      introTitle:'4枚を回して、数字をそろえる。',
+      introDesc:'盤面をスワイプすると、近くの4枚が90°回転します。90°回転が「1手」。1〜9の順に並べばクリアです。',
+      gestureTitle:'3手で完成する見本', gestureDesc:'指の動きに合わせて盤面をスワイプ。3手で1〜9がそろいます。',
+      gestureMove:'{step}手目：ここを{direction}へスワイプ', gestureStart:'この盤面からスタート', gestureDone:'3手で完成！', up:'上', down:'下',
+      start:'全15問のパズルを始める', backGame:'ゲームに戻る',
+      guide:'GUIDE', difficult:'なぜ難しい？', canDo:'これができると',
+      again:'もう一度やる', toMenu:'メニューへ', nextPuzzle:'次の問題へ →',
+      lessonClear:'LESSON CLEAR!', answerTitle:'ANSWER', practiceTitle:'PRACTICE', allClearTitle:'ALL CLEAR!', clearTitle:'CLEAR!', clear:'閉じる',
+      moveUnit:'手', step:'手順', success:'成功', answerChecked:'答えを確認しました。',
+      wrongMove:'その動きではありません。「次の一手を見る」で、回す場所と方向を確認できます。',
+      wrongShown:'今は手順{step}です。表示されている方向へ90°回してみてください。',
+      thinkOrHint:'盤面を見て考えるか、「次の一手を見る」で回す場所と方向を確認できます。',
+      shownDirection:'盤面に表示された方向へ90°回してください。',
+      right:'右回り', left:'左回り', thisWay:'この方向', opposite:'反対方向です', otherPivot:'別の軸です',
+      hintShown:'盤面に、次に回す場所と方向を表示しました。', hintHidden:'次の一手を隠しました。盤面を見て考えてみてください。',
+      replayLesson:'同じレッスンを最初から始めます。', firstBoard:'最初の盤面',
+      finalPuzzle:'これが最後の問題', allClearMore:'レッスンや上級者用フリーは、右上のメニューからいつでも開けます。',
+      rotateLeft:'交点{n}を左回りに回す', rotateRight:'交点{n}を右回りに回す', guideClose:'ガイダンスを閉じてメニューへ戻る',
+      solutionPlayed:'交換の手順を最後まで再生しました。', hintCompleted:'「次の一手」を使いながら交換の手順を完成しました。',
+      tryAgain:'もう一度、最初から自分で試せます。', escapeSuccess:'6・8・9の詰まりを最短6手で脱出しました。',
+      escapeTip:'下段だけで直そうとせず、3手で大きく崩してから3手で回収するのがポイントです。',
+      swapSuccess:'{pair}だけを交換できました。', swapTip:'途中で崩しても、逆向きの回転で周囲を回収すれば、狙った2枚だけを交換できます。'
+      ,clearAnswer:'答えを確認しました。最初から自力で挑戦できます。', clearHint:'次の一手を使った練習クリアです。最初から再挑戦できます。',
+      clearFree:'上級者用フリーを完成しました！', allClear:'全15問クリア！ お見事です。', clearOptimal:'最短手数でクリア！ 次の問題へ進みましょう。',
+      clearMoves:'{moves}手で完成しました。次の問題へ進みましょう。', puzzleIntro:'問題{stage} — 最短{par}手。盤面をスワイプして4枚を90°回してください。',
+      freeIntro:'上級者用フリー — 手数制限なしで完成を目指してください。', solverPrep:'答えを準備中です。少し待ってからもう一度押してください。',
+      autoStopLesson:'答えの再生を止めました。ここから自分で続けられます。', autoStop:'自動再生を止めました。',
+      undoLesson:'1手戻しました。手順も1つ戻ります。', undoDone:'1手戻しました。手数も1つ減ります。',
+      restartLesson:'このレッスンを最初からやり直します。', resetFree:'上級者用フリーを最初の盤面へ戻しました。', resetPuzzle:'この問題を最初の盤面へ戻しました。'
+      ,strategyText:'✓が増える回し方を探しましょう。違ったら「1手もどす」で戻せます。',
+      qualityGood:'で近づく', qualitySame:'では変わらない', qualityBad:'では遠ざかる',
+      qualityTouch:'盤面を少しスワイプすると、指を離す前にその一手を評価します。', qualityMouse:'盤上をマウスで探ると、次の一手を色で評価します。'
+    },
+    en:{
+      pageTitle:'ROTATE NINE — A four-tile rotation puzzle', language:'Choose language',
+      menu:'Menu', help:'How to Play', goal:'Solve in {n} moves', current:'Current', stage:'Puzzle', lesson:'LESSON',
+      free:'Expert Free Play', prev:'Previous', next:'Next', undo:'Undo', reset:'Restart',
+      shuffle:'Shuffle', hintShow:'Show next move', hintHide:'Hide next move',
+      answer:'Show solution', stop:'Stop', strategy:'? Puzzle hint',
+      modeTitle:'Choose a mode', modeDesc:'Choose Standard Puzzles, Swap Lessons, or Expert Free Play.',
+      normal:'Standard Puzzles', startProgress:'Puzzle {stage} / 15 (Best: {par} moves)', exchange:'Swap Lessons', close:'Close',
+      chooseLesson:'Choose a lesson', adjacentTab:'Adjacent<br>8 · 9', diagonalTab:'Diagonal<br>5 · 9',
+      diagonal68Tab:'Diagonal<br>6 · 8', escapeTab:'6 · 8 · 9<br>Escape',
+      why:'Why is it hard?', mastery:'What you will learn', startLesson:'Start lesson',
+      introTitle:'Rotate four tiles. Put the numbers in order.',
+      introDesc:'Swipe the board to rotate the nearest four tiles by 90°. One 90° rotation counts as one move. Arrange 1 through 9 to clear the puzzle.',
+      gestureTitle:'A three-move example', gestureDesc:'Swipe with the finger animation. The numbers line up from 1 to 9 in three moves.',
+      gestureMove:'Move {step}: swipe {direction} here', gestureStart:'Start from this board', gestureDone:'Complete in three moves!', up:'up', down:'down',
+      start:'Start the 15 puzzles', backGame:'Back to game',
+      guide:'GUIDE', difficult:'Why is it hard?', canDo:'What you will learn',
+      again:'Try again', toMenu:'Menu', nextPuzzle:'Next puzzle →',
+      lessonClear:'LESSON CLEAR!', answerTitle:'ANSWER', practiceTitle:'PRACTICE', allClearTitle:'ALL CLEAR!', clearTitle:'CLEAR!', clear:'Close',
+      moveUnit:' moves', step:'Step', success:'Success', answerChecked:'Solution reviewed.',
+      wrongMove:'That is not the move. Use “Show next move” to check the pivot and direction.',
+      wrongShown:'This is step {step}. Rotate 90° in the direction shown.',
+      thinkOrHint:'Study the board, or tap “Show next move” to reveal the pivot and direction.',
+      shownDirection:'Rotate 90° in the direction shown on the board.',
+      right:'clockwise', left:'counterclockwise', thisWay:'This way', opposite:'Opposite direction', otherPivot:'Different pivot',
+      hintShown:'The next pivot and direction are now shown on the board.', hintHidden:'The next move is hidden. Try reading the board yourself.',
+      replayLesson:'Starting the same lesson again.', firstBoard:'Starting board',
+      finalPuzzle:'This is the final puzzle', allClearMore:'Swap Lessons and Expert Free Play are always available from the menu.',
+      rotateLeft:'Rotate pivot {n} counterclockwise', rotateRight:'Rotate pivot {n} clockwise', guideClose:'Close the guide and return to the menu',
+      solutionPlayed:'The full swap sequence was played.', hintCompleted:'You completed the swap sequence with “Show next move.”',
+      tryAgain:'Try it again from the beginning on your own.', escapeSuccess:'You escaped the stuck 6–8–9 pattern in the optimal six moves.',
+      escapeTip:'The key is to break the pattern in three moves, then recover it in three—not to work only on the bottom row.',
+      swapSuccess:'You swapped only {pair}.', swapTip:'Even after disturbing the board, reverse rotations can restore the surroundings and leave only the target pair swapped.'
+      ,clearAnswer:'Solution reviewed. Try again from the beginning on your own.', clearHint:'Practice clear with “Show next move.” Try again from the beginning.',
+      clearFree:'Expert Free Play complete!', allClear:'All 15 puzzles complete! Well done.', clearOptimal:'Optimal clear! Continue to the next puzzle.',
+      clearMoves:'Completed in {moves} moves. Continue to the next puzzle.', puzzleIntro:'Puzzle {stage} — optimal in {par} moves. Swipe to rotate four tiles by 90°.',
+      freeIntro:'Expert Free Play — complete the board with no move limit.', solverPrep:'Preparing the solution. Please try again in a moment.',
+      autoStopLesson:'Solution playback stopped. Continue on your own from here.', autoStop:'Automatic playback stopped.',
+      undoLesson:'Moved back one step in the lesson.', undoDone:'Undid one move.',
+      restartLesson:'Restarting this lesson from the beginning.', resetFree:'Expert Free Play returned to its starting board.', resetPuzzle:'Puzzle returned to its starting board.'
+      ,strategyText:'Look for a rotation that increases the ✓ marks. Use Undo if needed.',
+      qualityGood:'gets closer', qualitySame:'does not change the distance', qualityBad:'moves farther away',
+      qualityTouch:'Swipe a little to evaluate the move before releasing.', qualityMouse:'Explore the board with the pointer to evaluate the next move by color.'
+    },
+    zh:{
+      pageTitle:'ROTATE NINE — 四格旋转数字谜题', language:'选择语言',
+      menu:'菜单', help:'玩法', goal:'最少{n}步完成', current:'当前', stage:'关卡', lesson:'课程',
+      free:'高手自由模式', prev:'上一题', next:'下一题', undo:'撤销一步', reset:'重新开始',
+      shuffle:'打乱', hintShow:'查看下一步', hintHide:'隐藏下一步',
+      answer:'查看答案', stop:'停止', strategy:'？ 本题提示',
+      modeTitle:'选择模式', modeDesc:'可选择普通关卡、交换课程或高手自由模式。',
+      normal:'普通关卡', startProgress:'第{stage}关 / 15（最少{par}步）', exchange:'交换课程', close:'关闭',
+      chooseLesson:'选择课程', adjacentTab:'相邻<br>8・9', diagonalTab:'对角<br>5・9',
+      diagonal68Tab:'对角<br>6・8', escapeTab:'6・8・9<br>脱困',
+      why:'难点是什么？', mastery:'学会之后', startLesson:'开始课程',
+      introTitle:'旋转四个方块，让数字归位。',
+      introDesc:'在棋盘上滑动，附近的四个方块会旋转90°。一次90°旋转算一步。按1到9排列即可过关。',
+      gestureTitle:'三步完成示例', gestureDesc:'跟随手指动画滑动棋盘，三步即可让1到9归位。',
+      gestureMove:'第{step}步：在这里向{direction}滑动', gestureStart:'从这个棋盘开始', gestureDone:'三步完成！', up:'上', down:'下',
+      start:'开始15道关卡', backGame:'返回游戏',
+      guide:'提示', difficult:'难点是什么？', canDo:'学会之后',
+      again:'再来一次', toMenu:'返回菜单', nextPuzzle:'下一题 →',
+      lessonClear:'课程完成！', answerTitle:'答案', practiceTitle:'练习完成', allClearTitle:'全部完成！', clearTitle:'过关！', clear:'关闭',
+      moveUnit:'步', step:'步骤', success:'成功', answerChecked:'已查看答案。',
+      wrongMove:'这一步不对。请用“查看下一步”确认旋转轴和方向。',
+      wrongShown:'现在是第{step}步。请按显示方向旋转90°。',
+      thinkOrHint:'可以观察棋盘思考，或点“查看下一步”确认旋转轴和方向。',
+      shownDirection:'请按棋盘上显示的方向旋转90°。',
+      right:'顺时针', left:'逆时针', thisWay:'方向正确', opposite:'方向相反', otherPivot:'旋转轴不对',
+      hintShown:'棋盘上已显示下一步的旋转轴和方向。', hintHidden:'已隐藏下一步，请自己观察棋盘。',
+      replayLesson:'重新开始同一课程。', firstBoard:'初始棋盘',
+      finalPuzzle:'这是最后一题', allClearMore:'可随时从右上角菜单打开交换课程和高手自由模式。',
+      rotateLeft:'逆时针旋转轴{n}', rotateRight:'顺时针旋转轴{n}', guideClose:'关闭说明并返回菜单',
+      solutionPlayed:'已播放完整交换步骤。', hintCompleted:'使用“查看下一步”完成了交换步骤。',
+      tryAgain:'可以从头再自己试一次。', escapeSuccess:'用最少6步解开了6・8・9。',
+      escapeTip:'关键不是只转下排，而是先用3步打乱，再用3步恢复。',
+      swapSuccess:'只交换了{pair}。', swapTip:'即使中途打乱，也可以用反向旋转恢复周围，只留下目标两格交换。'
+      ,clearAnswer:'已查看答案。可以从头独立挑战。', clearHint:'使用“查看下一步”完成练习。可以从头再挑战。',
+      clearFree:'高手自由模式完成！', allClear:'15道关卡全部完成！太棒了。', clearOptimal:'最少步数过关！请进入下一题。',
+      clearMoves:'用{moves}步完成。请进入下一题。', puzzleIntro:'第{stage}题 — 最少{par}步。滑动棋盘让四格旋转90°。',
+      freeIntro:'高手自由模式 — 不限步数完成棋盘。', solverPrep:'正在准备答案，请稍后再试。',
+      autoStopLesson:'已停止答案播放，可以从这里继续。', autoStop:'已停止自动播放。',
+      undoLesson:'已撤销一步，课程步骤也退回一步。', undoDone:'已撤销一步。', restartLesson:'从头重新开始本课程。',
+      resetFree:'高手自由模式已回到初始棋盘。', resetPuzzle:'本题已回到初始棋盘。'
+      ,strategyText:'寻找能增加✓的旋转方向。选错时可以撤销一步。',
+      qualityGood:'会更接近完成', qualitySame:'距离不变', qualityBad:'会离完成更远',
+      qualityTouch:'轻轻滑动棋盘，松手前即可判断这一步。', qualityMouse:'移动鼠标探索棋盘，用颜色判断下一步。'
+    },
+    ko:{
+      pageTitle:'ROTATE NINE — 네 칸 회전 숫자 퍼즐', language:'언어 선택',
+      menu:'메뉴', help:'게임 방법', goal:'최소 {n}수로 완성', current:'현재', stage:'문제', lesson:'레슨',
+      free:'고급 자유 모드', prev:'이전', next:'다음', undo:'한 수 되돌리기', reset:'다시 시작',
+      shuffle:'섞기', hintShow:'다음 수 보기', hintHide:'다음 수 숨기기',
+      answer:'정답 보기', stop:'정지', strategy:'? 문제 힌트',
+      modeTitle:'모드 선택', modeDesc:'일반 문제, 교환 레슨 또는 고급 자유 모드를 선택하세요.',
+      normal:'일반 문제', startProgress:'문제 {stage} / 15 (최소 {par}수)', exchange:'교환 레슨', close:'닫기',
+      chooseLesson:'레슨 선택', adjacentTab:'인접<br>8 · 9', diagonalTab:'대각선<br>5 · 9',
+      diagonal68Tab:'대각선<br>6 · 8', escapeTab:'6 · 8 · 9<br>탈출',
+      why:'왜 어려울까요?', mastery:'배우고 나면', startLesson:'레슨 시작',
+      introTitle:'네 칸을 돌려 숫자를 맞추세요.',
+      introDesc:'보드를 스와이프하면 가까운 네 칸이 90° 회전합니다. 90° 회전 한 번이 한 수입니다. 1부터 9까지 순서대로 놓으면 성공입니다.',
+      gestureTitle:'3수 완성 예시', gestureDesc:'손가락 움직임을 따라 보드를 스와이프하세요. 3수로 1부터 9까지 맞춰집니다.',
+      gestureMove:'{step}수째: 여기서 {direction}으로 스와이프', gestureStart:'이 보드에서 시작', gestureDone:'3수로 완성!', up:'위', down:'아래',
+      start:'15개 문제 시작', backGame:'게임으로 돌아가기',
+      guide:'안내', difficult:'왜 어려울까요?', canDo:'배우고 나면',
+      again:'다시 하기', toMenu:'메뉴로', nextPuzzle:'다음 문제 →',
+      lessonClear:'레슨 성공!', answerTitle:'정답', practiceTitle:'연습 성공', allClearTitle:'모두 성공!', clearTitle:'성공!', clear:'닫기',
+      moveUnit:'수', step:'단계', success:'성공', answerChecked:'정답을 확인했습니다.',
+      wrongMove:'그 수가 아닙니다. “다음 수 보기”로 회전축과 방향을 확인하세요.',
+      wrongShown:'지금은 {step}단계입니다. 표시된 방향으로 90° 돌려 보세요.',
+      thinkOrHint:'보드를 보고 생각하거나 “다음 수 보기”로 회전축과 방향을 확인하세요.',
+      shownDirection:'보드에 표시된 방향으로 90° 돌리세요.',
+      right:'시계 방향', left:'반시계 방향', thisWay:'이 방향', opposite:'반대 방향', otherPivot:'다른 회전축',
+      hintShown:'다음 회전축과 방향을 보드에 표시했습니다.', hintHidden:'다음 수를 숨겼습니다. 보드를 보고 생각해 보세요.',
+      replayLesson:'같은 레슨을 처음부터 시작합니다.', firstBoard:'시작 보드',
+      finalPuzzle:'마지막 문제입니다', allClearMore:'교환 레슨과 고급 자유 모드는 오른쪽 위 메뉴에서 언제든 열 수 있습니다.',
+      rotateLeft:'회전축 {n}을 반시계 방향으로 돌리기', rotateRight:'회전축 {n}을 시계 방향으로 돌리기', guideClose:'안내를 닫고 메뉴로 돌아가기',
+      solutionPlayed:'교환 순서를 끝까지 재생했습니다.', hintCompleted:'“다음 수 보기”를 사용해 교환 순서를 완성했습니다.',
+      tryAgain:'처음부터 혼자 다시 시도할 수 있습니다.', escapeSuccess:'막힌 6·8·9를 최단 6수로 탈출했습니다.',
+      escapeTip:'아래쪽만 고치지 말고 3수로 크게 흐트러뜨린 뒤 3수로 복구하는 것이 핵심입니다.',
+      swapSuccess:'{pair}만 교환했습니다.', swapTip:'중간에 흐트러져도 반대 회전으로 주변을 복구하면 목표 두 칸만 교환할 수 있습니다.'
+      ,clearAnswer:'정답을 확인했습니다. 처음부터 혼자 다시 도전해 보세요.', clearHint:'“다음 수 보기”를 사용한 연습 성공입니다. 처음부터 다시 도전할 수 있습니다.',
+      clearFree:'고급 자유 모드 완성!', allClear:'15개 문제를 모두 완성했습니다! 훌륭합니다.', clearOptimal:'최단 수 성공! 다음 문제로 가세요.',
+      clearMoves:'{moves}수로 완성했습니다. 다음 문제로 가세요.', puzzleIntro:'문제 {stage} — 최단 {par}수. 스와이프해 네 칸을 90° 돌리세요.',
+      freeIntro:'고급 자유 모드 — 수 제한 없이 완성을 목표로 하세요.', solverPrep:'정답을 준비 중입니다. 잠시 후 다시 눌러 주세요.',
+      autoStopLesson:'정답 재생을 멈췄습니다. 여기서 직접 계속할 수 있습니다.', autoStop:'자동 재생을 멈췄습니다.',
+      undoLesson:'한 수 되돌렸습니다. 레슨 단계도 하나 돌아갑니다.', undoDone:'한 수 되돌렸습니다.',
+      restartLesson:'이 레슨을 처음부터 다시 시작합니다.', resetFree:'고급 자유 모드를 시작 보드로 되돌렸습니다.', resetPuzzle:'이 문제를 시작 보드로 되돌렸습니다.'
+      ,strategyText:'✓가 늘어나는 회전을 찾아보세요. 틀리면 한 수 되돌릴 수 있습니다.',
+      qualityGood:'완성에 가까워짐', qualitySame:'거리가 같음', qualityBad:'완성에서 멀어짐',
+      qualityTouch:'보드를 조금 스와이프하면 손을 떼기 전에 수를 평가합니다.', qualityMouse:'마우스로 보드를 살펴보면 다음 수를 색으로 평가합니다.'
+    }
+  };
+  function tr(key, vars){
+    var value = (UI_TEXT[currentLang] && UI_TEXT[currentLang][key]) || UI_TEXT.ja[key] || key;
+    if (vars) Object.keys(vars).forEach(function(name){
+      value = value.replace(new RegExp('\\{' + name + '\\}', 'g'), vars[name]);
+    });
+    return value;
+  }
+  var languageToggle = document.getElementById('languageToggle');
+  var languageMenu = document.getElementById('languageMenu');
+  var languageButtons = Array.prototype.slice.call(languageMenu.querySelectorAll('[data-lang]'));
+  var goalDisplay = document.getElementById('goalDisplay');
+  var movesDisplay = document.getElementById('movesDisplay');
   var board   = document.getElementById('board');
   var elMoves = document.getElementById('moves');
   var headlinePar = document.getElementById('headlinePar');
@@ -1024,6 +1260,91 @@
   var gestureFinger = document.querySelector('.gesture-finger');
   var gestureBoard = document.querySelector('.gesture-board');
   var gestureStep = document.getElementById('gestureStep');
+
+  function applyLanguage(lang){
+    if (!UI_TEXT[lang]) return;
+    currentLang = lang;
+    document.documentElement.lang = lang === 'zh' ? 'zh-CN' : lang;
+    document.title = tr('pageTitle');
+    languageToggle.setAttribute('aria-label', tr('language'));
+    languageMenu.setAttribute('aria-label', tr('language'));
+    languageButtons.forEach(function(button){
+      button.setAttribute('aria-checked', String(button.dataset.lang === lang));
+    });
+
+    goalDisplay.innerHTML = tr('goal', {
+      n:'<em><span id="headlinePar">' + (tutorialOn ? 5 : (freeMode ? '?' : puzzlePar)) + '</span></em>'
+    });
+    headlinePar = document.getElementById('headlinePar');
+    movesDisplay.innerHTML = tr('current') + '<br><b id="moves">' + moves + '</b>' + tr('moveUnit');
+    elMoves = document.getElementById('moves');
+
+    advancedBtn.textContent = tr('menu');
+    helpBtn.textContent = tr('help');
+    undoBtn.textContent = tr('undo');
+    resetBtn.textContent = tr('reset');
+    mixBtn.textContent = tr('shuffle');
+    hintLabel.textContent = tutorialHintVisible || qualityMode ? tr('hintHide') : tr('hintShow');
+    demoLabel.textContent = demoOn ? tr('stop') : tr('answer');
+    strategyBtn.textContent = tr('strategy');
+    prevBtn.innerHTML = '← <span class="nav-label">' + tr('prev') + '</span>';
+    nextBtn.innerHTML = '<span class="nav-label">' + tr('next') + '</span> →';
+
+    document.getElementById('advancedTitle').textContent = tr('modeTitle');
+    advancedOverlay.querySelector('.advanced-card>p:not(.intro-kicker)').textContent = tr('modeDesc');
+    normalModeBtn.textContent = tr('normal');
+    tutorialBtn.textContent = tr('exchange');
+    freeBtn.textContent = tr('free');
+    advancedCloseBtn.textContent = tr('close');
+
+    tutorialGuideOverlay.querySelector('.tutorial-guide-tabs').setAttribute('aria-label', tr('chooseLesson'));
+    tutorialGuideCloseBtn.setAttribute('aria-label', tr('guideClose'));
+    tutorialGuideTabs[0].innerHTML = tr('adjacentTab');
+    tutorialGuideTabs[1].innerHTML = tr('diagonalTab');
+    tutorialGuideTabs[2].innerHTML = tr('diagonal68Tab');
+    tutorialGuideTabs[3].innerHTML = tr('escapeTab');
+    var guideHeadings = tutorialGuideOverlay.querySelectorAll('.tutorial-guide-copy h3');
+    guideHeadings[0].textContent = tr('difficult');
+    guideHeadings[1].textContent = tr('canDo');
+    tutorialGuideStartBtn.textContent = tr('startLesson');
+
+    document.getElementById('introTitle').textContent = tr('introTitle');
+    introOverlay.querySelector('.intro-card>p:not(.intro-kicker)').textContent = tr('introDesc');
+    gestureStep.textContent = tr('gestureTitle');
+    introOverlay.querySelector('.gesture-copy span').textContent = tr('gestureDesc');
+    startBtn.textContent = introReview ? tr('backGame') : tr('start');
+
+    board.setAttribute('aria-label',
+      lang === 'ja' ? '3かける3の回転パズル' :
+      (lang === 'en' ? 'Three by three rotation puzzle' :
+      (lang === 'zh' ? '三乘三旋转数字谜题' : '3×3 회전 숫자 퍼즐')));
+    stageProgress.setAttribute('aria-label', tr('stage') + ' 1–15');
+    knobs.forEach(function(knob, index){
+      var labels = knob.querySelectorAll('.sr-only');
+      labels[0].textContent = tr('rotateLeft', {n:index + 1});
+      labels[1].textContent = tr('rotateRight', {n:index + 1});
+    });
+    if (celebration){
+      celebrationNext.textContent = tutorialOn ? tr('again') : tr('nextPuzzle');
+      celebrationClose.textContent = celebrationOpenMenuOnClose ? tr('toMenu') : tr('close');
+      resetNotice.textContent = tr('firstBoard');
+      var clearLinks = celebration.querySelectorAll('[data-clear-action]');
+      allClearExtra.querySelector('p').textContent = tr('allClearMore');
+      if (clearLinks.length){
+        clearLinks[0].textContent = tr('free');
+        clearLinks[1].textContent = localizedGuide('adjacent').title;
+        clearLinks[2].textContent = localizedGuide('diagonal').title;
+        clearLinks[3].textContent = localizedGuide('diagonal68').title;
+        clearLinks[4].textContent = localizedGuide('escape').title;
+      }
+    }
+    if (tutorialGuideOn && pendingTutorialKind) renderTutorialGuide(pendingTutorialKind);
+    if (tutorialOn && tutorialStep < tutorialSteps.length) renderTutorial();
+    else if (!solved) say(freeMode ? tr('freeIntro') : tr('puzzleIntro', {stage:stageNo, par:puzzlePar}));
+    if (progressSteps.length) updateStageOptions();
+    refresh();
+  }
+
   var progressSteps = [];
   for (var progressIndex = 1; progressIndex <= 15; progressIndex++){
     var progressStep = document.createElement('button');
@@ -1147,6 +1468,132 @@
       ]
     }
   };
+  var TUTORIAL_TEXT = {
+    en:{
+      adjacent:{
+        title:'Adjacent 8–9 Swap', lead:'Swap only 8 and 9.',
+        aria:'Board with only 8 and 9 reversed and an arrow between them.',
+        difficulty:'Each move rotates four tiles, so two adjacent tiles cannot be swapped directly. Disturb the surrounding tiles, then restore the other seven in five moves.',
+        mastery:'You will recognize and solve the 8–9 swap pattern near the end of Expert Free Play.',
+        steps:[
+          'Turn the upper-right pivot clockwise to start moving 8 and 9 through the center.',
+          'Turn the lower-left pivot counterclockwise. The board looks worse, but this prepares the swap.',
+          'Turn the upper-right pivot back counterclockwise and begin restoring the surrounding tiles.',
+          'Turn the lower-left pivot back clockwise to recover the tiles disturbed in step 2.',
+          'Finish by turning the lower-right pivot clockwise. Only 8 and 9 remain swapped.'
+        ]
+      },
+      diagonal:{
+        title:'Diagonal 5–9 Swap', lead:'Swap only the diagonal 5 and 9.',
+        aria:'Board with arrows swapping the center 9 and lower-right 5 diagonally.',
+        difficulty:'The center and lower-right cannot trade places in one rotation. Move across the center, then restore the surrounding tiles in five moves.',
+        mastery:'You will be able to resolve a diagonal mismatch near the end of Expert Free Play without turning at random.',
+        steps:[
+          'Turn the lower-left pivot clockwise to move diagonal 5 and 9 into a swappable pattern.',
+          'Turn the upper-right pivot counterclockwise to rearrange their relationship across the center.',
+          'Turn the lower-right pivot counterclockwise. The surroundings break up while the swap progresses.',
+          'Turn the lower-left pivot back counterclockwise to restore the surrounding tiles.',
+          'Finish with the upper-right pivot clockwise. Only 5 and 9 remain swapped.'
+        ]
+      },
+      diagonal68:{
+        title:'Diagonal 6–8 Swap', lead:'Swap only the diagonal 6 and 8.',
+        aria:'Board with arrows swapping the middle-right 8 and lower-middle 6.',
+        difficulty:'The nearby 2×2 area is not enough. Use the upper-left as a route and swap only the two tiles in seven moves.',
+        mastery:'You will see how to disturb a wider area and recover it when this pattern appears in Expert Free Play.',
+        steps:[
+          'Turn the upper-right pivot clockwise to prepare the diagonal 6–8 swap.',
+          'Turn the lower-left pivot clockwise to send 6 and 8 toward the center.',
+          'Turn the upper-left pivot clockwise to open the route needed for the swap.',
+          'Turn the lower-left pivot clockwise again to reverse the relationship of the two tiles.',
+          'Turn the upper-left pivot back counterclockwise and begin restoring the surroundings.',
+          'Turn the upper-right pivot back counterclockwise, leaving only 6 and 8 displaced.',
+          'Finish with the lower-left pivot counterclockwise. Only 6 and 8 remain swapped.'
+        ]
+      },
+      escape:{
+        title:'6–8–9 Escape', lead:'Put 6, 8, and 9 back in the correct order.',
+        aria:'Board with three arrows cycling 6, 8, and 9 on the right and bottom.',
+        difficulty:'Rotating only the bottom row cannot unlock these three tiles. Break the pattern in three moves, then restore the surroundings in three more.',
+        mastery:'When the last three tiles become stuck in Expert Free Play, you will see a route to completion.',
+        steps:[
+          'Turn the lower-right pivot clockwise to open the stuck 6–8–9 pattern.',
+          'Turn the lower-left pivot counterclockwise and prepare to use the center, not only the bottom.',
+          'Turn the upper-right pivot clockwise. These first three moves reorder the three tiles.',
+          'Turn the lower-left pivot back clockwise. Now begin the three recovery moves.',
+          'Turn the upper-right pivot back counterclockwise to restore the top and center.',
+          'Finish with the lower-right pivot clockwise. 6, 8, and 9 are now in order.'
+        ]
+      }
+    },
+    zh:{
+      adjacent:{
+        title:'相邻 8・9 交换', lead:'只把8和9对调。',
+        aria:'只有下排8和9颠倒，并带有交换箭头的棋盘。',
+        difficulty:'每次会旋转四格，无法直接只交换两个相邻数字。先打乱周围，再用5步恢复其余7格。',
+        mastery:'在高手自由模式的残局中只剩8和9颠倒时，可以识别并使用这个交换套路。',
+        steps:['顺时针转右上轴，让8和9开始经过中心移动。','逆时针转左下轴。棋盘暂时更乱，但这是交换准备。','逆时针转回右上轴，开始恢复周围数字。','顺时针转回左下轴，收回第2步打乱的部分。','最后顺时针转右下轴，只留下8和9交换。']
+      },
+      diagonal:{
+        title:'对角 5・9 交换', lead:'只交换对角位置的5和9。',
+        aria:'中央9与右下5沿对角线交换的棋盘。',
+        difficulty:'中央与右下无法通过一次旋转交换。需要跨过中心移动，并在5步内恢复周围。',
+        mastery:'在高手自由模式残局中，可以有目的地处理对角错位。',
+        steps:['顺时针转左下轴，把5和9移到可交换的形状。','逆时针转右上轴，跨过中心重组两者位置。','逆时针转右下轴。周围会变乱，但交换正在推进。','逆时针转回左下轴，恢复交换时使用的周围数字。','最后顺时针转右上轴，只留下5和9交换。']
+      },
+      diagonal68:{
+        title:'对角 6・8 交换', lead:'只交换对角位置的6和8。',
+        aria:'右中8与下中6沿对角线交换的棋盘。',
+        difficulty:'只用附近的2×2区域无法复原。把左上也作为通道，用7步只交换这两格。',
+        mastery:'在高手自由模式遇到同样形状时，会看出先扩大打乱再恢复的路线。',
+        steps:['顺时针转右上轴，准备交换对角的6和8。','顺时针转左下轴，把6和8送向中央。','顺时针转左上轴，打开交换所需通道。','再次顺时针转左下轴，调换两格的位置关系。','逆时针转回左上轴，开始恢复周围。','逆时针转回右上轴，整理成只剩6和8错位。','最后逆时针转左下轴，只留下6和8交换。']
+      },
+      escape:{
+        title:'6・8・9 脱困', lead:'把6、8、9恢复为正确顺序。',
+        aria:'右侧和下排的6、8、9带有循环箭头的棋盘。',
+        difficulty:'只转下排无法解开这三格。先用3步大幅打乱，再用3步恢复周围。',
+        mastery:'高手自由模式最后三格卡住时，也能看出通往完成的路线。',
+        steps:['顺时针转右下轴，打开卡住的6・8・9。','逆时针转左下轴，准备使用中央而不只盯着下排。','顺时针转右上轴，前三步会重排这三格。','顺时针转回左下轴，开始三步恢复。','逆时针转回右上轴，一次恢复上排和中央。','最后顺时针转右下轴，6、8、9恢复正确顺序。']
+      }
+    },
+    ko:{
+      adjacent:{
+        title:'인접 8·9 교환', lead:'8과 9만 서로 바꿉니다.',
+        aria:'아래쪽 8과 9만 뒤바뀌고 교환 화살표가 표시된 보드.',
+        difficulty:'한 번에 네 칸이 돌아가므로 인접한 두 칸만 바로 바꿀 수 없습니다. 주변을 흐트러뜨린 뒤 5수로 나머지 일곱 칸을 복구합니다.',
+        mastery:'고급 자유 모드 후반에 8과 9만 남아도 교환 패턴으로 해결할 수 있습니다.',
+        steps:['오른쪽 위 축을 시계 방향으로 돌려 8과 9를 중앙으로 움직이기 시작합니다.','왼쪽 아래 축을 반시계 방향으로 돌립니다. 더 흐트러져 보이지만 교환 준비입니다.','오른쪽 위 축을 반시계 방향으로 되돌리며 주변 복구를 시작합니다.','왼쪽 아래 축을 시계 방향으로 되돌려 2단계에서 흐트러진 칸을 복구합니다.','마지막으로 오른쪽 아래 축을 시계 방향으로 돌리면 8과 9만 교환됩니다.']
+      },
+      diagonal:{
+        title:'대각선 5·9 교환', lead:'대각선의 5와 9만 바꿉니다.',
+        aria:'가운데 9와 오른쪽 아래 5를 대각선으로 교환하는 보드.',
+        difficulty:'가운데와 오른쪽 아래는 한 번의 회전으로 바뀌지 않습니다. 중앙을 가로질러 움직인 뒤 5수로 주변을 복구합니다.',
+        mastery:'고급 자유 모드 후반의 대각선 어긋남을 무작정 돌리지 않고 해결할 수 있습니다.',
+        steps:['왼쪽 아래 축을 시계 방향으로 돌려 5와 9를 교환 가능한 모양으로 만듭니다.','오른쪽 위 축을 반시계 방향으로 돌려 중앙을 사이에 둔 관계를 바꿉니다.','오른쪽 아래 축을 반시계 방향으로 돌립니다. 주변은 흐트러지지만 교환은 진행됩니다.','왼쪽 아래 축을 반시계 방향으로 되돌려 주변 숫자를 복구합니다.','마지막으로 오른쪽 위 축을 시계 방향으로 돌리면 5와 9만 교환됩니다.']
+      },
+      diagonal68:{
+        title:'대각선 6·8 교환', lead:'대각선의 6과 8만 바꿉니다.',
+        aria:'오른쪽 가운데 8과 아래 가운데 6을 대각선으로 교환하는 보드.',
+        difficulty:'가까운 2×2만으로는 복구할 수 없습니다. 왼쪽 위까지 통로로 써서 7수로 두 칸만 교환합니다.',
+        mastery:'고급 자유 모드에서 같은 모양을 만나면 넓게 흐트러뜨린 뒤 복구하는 길이 보입니다.',
+        steps:['오른쪽 위 축을 시계 방향으로 돌려 6과 8 교환을 준비합니다.','왼쪽 아래 축을 시계 방향으로 돌려 6과 8을 중앙으로 보냅니다.','왼쪽 위 축을 시계 방향으로 돌려 교환 통로를 만듭니다.','왼쪽 아래 축을 다시 시계 방향으로 돌려 두 칸의 관계를 바꿉니다.','왼쪽 위 축을 반시계 방향으로 되돌리며 주변 복구를 시작합니다.','오른쪽 위 축을 반시계 방향으로 되돌려 6과 8만 남깁니다.','마지막으로 왼쪽 아래 축을 반시계 방향으로 돌리면 6과 8만 교환됩니다.']
+      },
+      escape:{
+        title:'6·8·9 탈출', lead:'6, 8, 9를 올바른 순서로 되돌립니다.',
+        aria:'오른쪽과 아래쪽의 6, 8, 9를 순환시키는 화살표가 있는 보드.',
+        difficulty:'아래쪽만 돌려서는 세 칸의 막힘을 풀 수 없습니다. 3수로 크게 흐트러뜨리고 3수로 주변을 복구합니다.',
+        mastery:'고급 자유 모드에서 마지막 세 칸이 막혀도 완성 경로를 찾을 수 있습니다.',
+        steps:['오른쪽 아래 축을 시계 방향으로 돌려 막힌 6·8·9를 엽니다.','왼쪽 아래 축을 반시계 방향으로 돌려 중앙을 사용할 준비를 합니다.','오른쪽 위 축을 시계 방향으로 돌립니다. 앞의 3수가 세 칸의 순서를 바꿉니다.','왼쪽 아래 축을 시계 방향으로 되돌리며 복구 3수를 시작합니다.','오른쪽 위 축을 반시계 방향으로 되돌려 위와 중앙을 복구합니다.','마지막으로 오른쪽 아래 축을 시계 방향으로 돌리면 6, 8, 9가 올바르게 놓입니다.']
+      }
+    }
+  };
+  function localizedGuide(kind){
+    return currentLang === 'ja' ? tutorialGuideData[kind] : TUTORIAL_TEXT[currentLang][kind];
+  }
+  function localizedStepWhy(kind, index){
+    if (currentLang === 'ja') return tutorialSteps[index].why;
+    return TUTORIAL_TEXT[currentLang][kind].steps[index];
+  }
   var tutorialSteps = adjacentTutorialSteps;
   var SIZE = 3, PIVOT_SIZE = SIZE - 1;
   var TILE_COUNT = SIZE * SIZE, PIVOT_COUNT = PIVOT_SIZE * PIVOT_SIZE;
@@ -1224,7 +1671,7 @@
       closeCelebration();
       if (tutorialOn){
         startTutorial(tutorialKind);
-        say('同じレッスンを最初から始めます。');
+        say(tr('replayLesson'));
       } else {
         nextPuzzle();
       }
@@ -1325,8 +1772,8 @@
       }
     }
     headlinePar.textContent = tutorialOn ? '5' : (freeMode ? '?' : puzzlePar);
-    headlineStage.innerHTML = tutorialOn ? 'LESSON' :
-      (freeMode ? '上級者用フリー' : '問題<br><b>' + stageNo + ' / 15</b>');
+    headlineStage.innerHTML = tutorialOn ? tr('lesson') :
+      (freeMode ? tr('free') : tr('stage') + '<br><b>' + stageNo + ' / 15</b>');
     stageProgress.hidden = tutorialOn || freeMode;
     if (!tutorialOn && !freeMode){
       progressSteps.forEach(function(stepEl, index){
@@ -1346,7 +1793,7 @@
     nextBtn.disabled = busy || demoOn || tutorialOn || freeMode || stageNo >= 15;
     prevBtn.disabled = stageNo <= 1 || busy || demoOn || tutorialOn || freeMode;
     tutorialBtn.disabled = busy || demoOn;
-    freeBtn.disabled = busy || demoOn || tutorialOn;
+    freeBtn.disabled = busy || demoOn;
     if (introOn){
       undoBtn.disabled = resetBtn.disabled = hintBtn.disabled = strategyBtn.disabled = mixBtn.disabled = demoBtn.disabled =
         tutorialBtn.disabled = freeBtn.disabled =
@@ -1505,18 +1952,18 @@
     setKnobsEnabled(false);
     refresh();
     if (answerViewed){
-      say('答えを確認しました。「この問題の最初から」で、自力クリアに挑戦できます。');
+      say(tr('clearAnswer'));
     } else if (hintUsed){
-      say('次の一手を使ったため練習クリアです。「この問題の最初から」で再挑戦できます。');
+      say(tr('clearHint'));
     } else if (freeMode){
-      say('上級者用フリーをクリア！ 手数制限なしで完成しました。', true);
+      say(tr('clearFree'), true);
     } else if (allClear){
-      nextBtn.textContent = '全15問クリア';
-      say('全問クリア！ 15問すべて完成しました。お見事です。', true);
+      nextBtn.textContent = tr('allClearTitle');
+      say(tr('allClear'), true);
     } else if (stageNo >= 15){
-      say('クリア！ プルダウンから未クリアの問題に挑戦しましょう。', true);
-    } else if (moves === puzzlePar) say('最短手数でクリア！ 「次の問題へ」で進みましょう。', true);
-    else say('クリア！ ' + moves + '手で完成しました。「次の問題へ」で進みましょう。', true);
+      say(tr('allClear'), true);
+    } else if (moves === puzzlePar) say(tr('clearOptimal'), true);
+    else say(tr('clearMoves', {moves:moves}), true);
   }
 
   /* ---------- 1〜3手の問題を作る ---------- */
@@ -1526,13 +1973,13 @@
     if (celebration) celebration.classList.remove('show');
     qualityMode = false; hintUsed = false;
     hintBtn.classList.remove('live');
-    hintLabel.textContent = '次の一手を見る';
+    hintLabel.textContent = tr('hintShow');
     board.classList.remove('won');
     tiles.forEach(function(t){ t.style.animation = 'none'; void t.offsetWidth; t.style.animation = ''; });
     setKnobsEnabled(true);
     solved = false; moves = 0; history = []; busy = false; demoUsed = false;
     puzzlePar = Math.max(1, Math.min(5, n || puzzlePar));
-    nextBtn.innerHTML = '<span class="nav-label">次へ</span> →';
+    nextBtn.innerHTML = '<span class="nav-label">' + tr('next') + '</span> →';
     var chosen = useSaved && stageRecords[stageNo];
     if (!chosen){
       var root = [], i;
@@ -1636,12 +2083,7 @@
 
     relayout();
     refresh();
-    say((stageNo === 15 ? '最後の問題' : '問題 ' + stageNo) + ' — 最短' + puzzlePar + '手。' +
-      (stageNo === 1
-        ? '盤面をスワイプして、4枚を90°回してみましょう。'
-        : puzzlePar >= 3
-        ? '回した後の4枚を想像して、次の1手を選んでください。'
-        : '回した後の4枚を想像してみてください。'));
+    say(tr('puzzleIntro', {stage:stageNo, par:puzzlePar}));
     if (!introOn) {
       strategyBtn.classList.remove('attention');
       void strategyBtn.offsetWidth;
@@ -1663,7 +2105,9 @@
     board.classList.remove('reset-feedback', 'final-feedback');
     resetNotice.classList.remove('show', 'start', 'final');
     if (isFinal){
-      resetNotice.innerHTML = '<strong>FINAL PUZZLE</strong><small>これが最後の問題</small>';
+      resetNotice.innerHTML = '<strong>FINAL PUZZLE</strong><small>' + tr('finalPuzzle') + '</small>';
+    } else if (isStart){
+      resetNotice.innerHTML = '<strong>START</strong><small>' + text + '</small>';
     } else {
       resetNotice.textContent = text;
     }
@@ -1676,11 +2120,15 @@
       board.classList.remove('reset-feedback', 'final-feedback');
       resetNotice.classList.remove('show', 'start', 'final');
       boardNoticeTimer = null;
-    }, isFinal ? 2180 : 920);
+    }, isFinal ? 2180 : (isStart ? 1580 : 920));
   }
 
-  function showResetFeedback(){ showBoardNotice('やり直し', false); }
-  function showStartFeedback(){ showBoardNotice('START', true); }
+  function showResetFeedback(){ showBoardNotice(tr('reset'), false); }
+  function showStartFeedback(){
+    showBoardNotice(freeMode
+      ? tr('free')
+      : tr('startProgress', {stage:stageNo, par:puzzlePar}), true);
+  }
   function showFinalFeedback(){ showBoardNotice('FINAL', false, true); }
 
   function playMoveSound(homeHits){
@@ -1760,7 +2208,7 @@
         stopDemo(true);
         if (freeMode) startFreeGame(true);
         else scramble(puzzlePar, true);
-        say('この問題を最初の盤面へ戻しました。もう一度、自力で挑戦できます。');
+        say(tr('resetPuzzle'));
         showResetFeedback();
       }, 0);
     } else if (celebrationOpenMenuOnClose && !introOn){
@@ -1773,38 +2221,36 @@
     if (!celebration) return;
     celebrationResetOnClose = !!(answerViewed || usedHint);
     celebrationOpenMenuOnClose = !celebrationResetOnClose && !!(allClear || isFree);
-    celebrationNext.textContent = '次の問題へ →';
-    celebrationClose.textContent = celebrationResetOnClose ? '閉じて最初に戻る' :
-      (celebrationOpenMenuOnClose ? 'メニューへ' : '閉じる');
+    celebrationNext.textContent = tr('nextPuzzle');
+    celebrationClose.textContent = celebrationOpenMenuOnClose ? tr('toMenu') : tr('close');
     allClearExtra.classList.remove('show');
     celebration.querySelector('.celebration-label').textContent =
-      answerViewed ? 'ANSWER' : (usedHint ? 'PRACTICE' : (allClear && !tutorialOn ? 'ALL CLEAR!' : 'CLEAR!'));
+      answerViewed ? tr('answerTitle') : (usedHint ? tr('practiceTitle') :
+        (allClear && !tutorialOn ? tr('allClearTitle') : tr('clearTitle')));
     if (introOn){
-      celebrationMessage.textContent = '90°回転を3手つないで完成しました。';
+      celebrationMessage.textContent = tr('gestureDone');
       celebrationNext.hidden = true;
       celebrationClose.hidden = true;
     } else if (answerViewed){
-      celebrationMessage.textContent =
-        '答えを確認しました。閉じるとこの問題の最初に戻ります。自力で解くとクリアになります。';
+      celebrationMessage.textContent = tr('clearAnswer');
       celebrationNext.hidden = true;
       celebrationClose.hidden = false;
     } else if (usedHint){
-      celebrationMessage.textContent =
-        '「次の一手」を使ったため練習扱いです。閉じるとこの問題の最初に戻ります。';
+      celebrationMessage.textContent = tr('clearHint');
       celebrationNext.hidden = true;
       celebrationClose.hidden = false;
     } else if (isFree){
-      celebrationMessage.textContent = moves + '手で上級者用フリーを完成させました！';
+      celebrationMessage.textContent = tr('clearFree') + ' ' + moves + ' ' + tr('moveUnit');
       celebrationNext.hidden = true;
       celebrationClose.hidden = false;
     } else if (allClear){
-      celebrationMessage.textContent = '15問すべてクリア！ 次は交換技や上級者用フリーに挑戦できます。';
+      celebrationMessage.textContent = tr('allClear');
       celebrationNext.hidden = true;
       celebrationClose.hidden = false;
     } else {
       celebrationMessage.textContent = moves === puzzlePar
-        ? '最短' + puzzlePar + '手でクリア！'
-        : moves + '手でクリアしました。';
+        ? tr('clearOptimal')
+        : tr('clearMoves', {moves:moves});
       celebrationNext.hidden = stageNo >= 15;
       celebrationClose.hidden = false;
     }
@@ -1820,12 +2266,12 @@
     celebrationResetOnClose = false;
     celebrationOpenMenuOnClose = true;
     allClearExtra.classList.remove('show');
-    celebration.querySelector('.celebration-label').textContent = answerViewed ? 'ANSWER' : 'LESSON CLEAR!';
+    celebration.querySelector('.celebration-label').textContent = answerViewed ? tr('answerTitle') : tr('lessonClear');
     celebrationMessage.textContent = message;
-    celebrationNext.textContent = 'もう一度やる';
+    celebrationNext.textContent = tr('again');
     celebrationNext.hidden = false;
     celebrationClose.hidden = false;
-    celebrationClose.textContent = 'メニューへ';
+    celebrationClose.textContent = tr('toMenu');
     celebration.classList.remove('show');
     void celebration.offsetWidth;
     celebration.classList.add('show');
@@ -1901,10 +2347,10 @@
     knobs[p].classList.add((cw ? 'ccw-' : 'cw-') + otherKind);
     board.classList.add('quality-' + kind);
     qualityLabel.className = 'quality-label show' + (kind === 'good' ? '' : ' ' + kind);
-    var direction = cw ? '↻ 右回り' : '↺ 左回り';
+    var direction = (cw ? '↻ ' + tr('right') : '↺ ' + tr('left'));
     qualityLabel.textContent = direction + (kind === 'good'
-      ? 'で近づく  ' + before + ' → ' + after
-      : (kind === 'same' ? 'では変わらない  ' + before + ' → ' + after : 'では遠ざかる  ' + before + ' → ' + after));
+      ? ' ' + tr('qualityGood') + '  ' + before + ' → ' + after
+      : (kind === 'same' ? ' ' + tr('qualitySame') + '  ' + before + ' → ' + after : ' ' + tr('qualityBad') + '  ' + before + ' → ' + after));
   }
   function showTutorialMoveQuality(p, cw){
     if (!tutorialOn || tutorialStep >= tutorialSteps.length) return;
@@ -1918,10 +2364,10 @@
     knobs[p].classList.add((cw ? 'ccw-' : 'cw-') + otherKind);
     board.classList.add('quality-' + kind);
     qualityLabel.className = 'quality-label show' + (kind === 'good' ? '' : ' bad');
-    var direction = cw ? '↻ 右回り' : '↺ 左回り';
+    var direction = (cw ? '↻ ' + tr('right') : '↺ ' + tr('left'));
     qualityLabel.textContent = direction + (kind === 'good'
-      ? '　この方向'
-      : (correctPivot ? '　反対方向です' : '　別の軸です'));
+      ? '　' + tr('thisWay')
+      : (correctPivot ? '　' + tr('opposite') : '　' + tr('otherPivot')));
   }
   function xf(it, deg, kc){
     var rad = deg * Math.PI / 180, c = Math.cos(rad), sn = Math.sin(rad);
@@ -2315,22 +2761,8 @@
 
   function showStrategyHint(){
     if (busy || solved || demoOn || tutorialOn || freeMode) return;
-    var text;
-    if (stageNo <= 3){
-      text = '✓は、数字が正しい場所にある印。回して✓を増やそう。';
-    } else if (stageNo <= 6){
-      text = '✓が増える向きを探そう。違ったら「1手もどす」でやり直せるよ。';
-    } else if (stageNo <= 9){
-      text = '✓が増える回し方が1つあるよ。迷ったら「やり直す」で最初の状態に戻せるよ。';
-    } else if (stageNo === 12){
-      text = '✓が増える回し方は2つ。次の手でも✓を増やせそうなのは、どっちかな？';
-    } else if (stageNo === 15){
-      text = '✓が増える回し方は2つ。次の手でも✓を増やせそうなのは、どっちかな？';
-    } else {
-      text = '1手ごとに、✓が増える回し方を選ぼう。';
-    }
     strategyBtn.classList.remove('attention');
-    say('ヒント：' + text);
+    say(tr('strategyText'));
     elStat.classList.remove('hint-reveal');
     void elStat.offsetWidth;
     elStat.classList.add('hint-reveal');
@@ -2342,28 +2774,26 @@
       tutorialHintVisible = !tutorialHintVisible;
       if (tutorialHintVisible) hintUsed = true;
       hintBtn.classList.toggle('live', tutorialHintVisible);
-      hintLabel.textContent = tutorialHintVisible ? '次の一手を隠す' : '次の一手を見る';
+      hintLabel.textContent = tutorialHintVisible ? tr('hintHide') : tr('hintShow');
       renderTutorial();
       say(tutorialHintVisible
-        ? '盤面に、次に回す場所と方向を表示しました。'
-        : '次の一手を隠しました。盤面を見て考えてみてください。');
+        ? tr('hintShown')
+        : tr('hintHidden'));
       return;
     }
     if (busy || solved || demoOn) return;
     if (freeMode && !fullSolverDistance){
       startSolverWorker();
-      say('上級者用フリーの最短ルートを準備中です。少し待ってからもう一度押してください。');
+      say(tr('solverPrep'));
       return;
     }
     qualityMode = !qualityMode;
     clearPreview();
     hintBtn.classList.toggle('live', qualityMode);
-    hintLabel.textContent = qualityMode ? '次の一手を隠す' : '次の一手を見る';
+    hintLabel.textContent = qualityMode ? tr('hintHide') : tr('hintShow');
     say(qualityMode
-      ? (coarsePointer
-        ? '盤面を少しスワイプすると、指を離す前にその一手を評価します。'
-        : '盤上をマウスで探ると、次の一手を緑・黄・赤で評価します。')
-      : '次の一手を隠しました。ここからは盤面だけを見て考えてみてください。');
+      ? (coarsePointer ? tr('qualityTouch') : tr('qualityMouse'))
+      : tr('hintHidden'));
     if (qualityMode){
       elStat.classList.remove('hint-reveal', 'move-hint-reveal');
       void elStat.offsetWidth;
@@ -2376,8 +2806,8 @@
     var expected = tutorialSteps[tutorialStep];
     if (turns === 1 && p === expected.p && cw === expected.cw) return true;
     say(tutorialHintVisible
-      ? '今は手順' + (tutorialStep + 1) + 'です。表示されている方向へ90°回してみてください。'
-      : 'その動きではありません。「次の一手を見る」で、回す場所と方向を確認できます。');
+      ? tr('wrongShown', {step:tutorialStep + 1})
+      : tr('wrongMove'));
     return false;
   }
 
@@ -2400,16 +2830,14 @@
     });
     elStat.classList.add('tutorial');
     elStat.classList.remove('win');
-    var lessonTitle = tutorialKind === 'adjacent' ? '隣同士（8・9）交換レッスン' :
-      (tutorialKind === 'diagonal' ? '斜め（5・9）交換レッスン' :
-      (tutorialKind === 'diagonal68' ? '斜め（6・8）交換レッスン' : '6・8・9 脱出レッスン'));
+    var lessonTitle = localizedGuide(tutorialKind).title;
     elStat.innerHTML =
-      '<div class="hint-title">' + lessonTitle + ' — 手順 ' +
+      '<div class="hint-title">' + lessonTitle + ' — ' + tr('step') + ' ' +
       (tutorialStep + 1) + ' / ' + tutorialSteps.length + '</div>' +
       '<div class="hint-steps">' + chips.join('') + '</div>' +
       '<div class="hint-reason">' + (tutorialHintVisible
-        ? step.why + ' 盤面に表示された方向へ90°回してください。'
-        : '盤面を見て考えるか、「次の一手を見る」で回す場所と方向を確認できます。') + '</div>';
+        ? localizedStepWhy(tutorialKind, tutorialStep) + ' ' + tr('shownDirection')
+        : tr('thinkOrHint')) + '</div>';
   }
 
   function advanceTutorial(){
@@ -2417,7 +2845,7 @@
     tutorialStep++;
     tutorialHintVisible = false;
     hintBtn.classList.remove('live');
-    hintLabel.textContent = '次の一手を見る';
+    hintLabel.textContent = tr('hintShow');
     refresh();
     if (tutorialStep < tutorialSteps.length){
       renderTutorial();
@@ -2426,27 +2854,27 @@
     clearPreview();
     if (demoUsed || hintUsed){
       var assistedReason = demoUsed
-        ? '交換の手順を最後まで再生しました。'
-        : '「次の一手」を使いながら交換の手順を完成しました。';
+        ? tr('solutionPlayed')
+        : tr('hintCompleted');
       elStat.classList.remove('win');
       elStat.innerHTML =
-        '<div class="hint-title">答えを確認しました。</div>' +
-        '<div class="hint-reason">' + assistedReason + ' もう一度、最初から自分で試せます。</div>';
-      tutorialWinFeedback(assistedReason + ' もう一度、自分で挑戦してみましょう。', true);
+        '<div class="hint-title">' + tr('answerChecked') + '</div>' +
+        '<div class="hint-reason">' + assistedReason + ' ' + tr('tryAgain') + '</div>';
+      tutorialWinFeedback(assistedReason + ' ' + tr('tryAgain'), true);
       return;
     }
     elStat.classList.add('win');
     if (tutorialKind === 'escape'){
       elStat.innerHTML =
-        '<div class="hint-title">成功：6・8・9の詰まりを最短6手で脱出しました。</div>' +
-        '<div class="hint-reason">下段だけで直そうとせず、3手で大きく崩してから3手で回収するのがポイントです。</div>';
-      tutorialWinFeedback('6・8・9の詰まりを最短6手で脱出しました。');
+        '<div class="hint-title">' + tr('success') + ': ' + tr('escapeSuccess') + '</div>' +
+        '<div class="hint-reason">' + tr('escapeTip') + '</div>';
+      tutorialWinFeedback(tr('escapeSuccess'));
     } else {
-      var pair = tutorialKind === 'adjacent' ? '8と9' : (tutorialKind === 'diagonal' ? '5と9' : '6と8');
+      var pair = tutorialKind === 'adjacent' ? '8–9' : (tutorialKind === 'diagonal' ? '5–9' : '6–8');
       elStat.innerHTML =
-        '<div class="hint-title">成功：' + pair + 'だけを交換できました。</div>' +
-        '<div class="hint-reason">途中で崩しても、逆向きの回転で周囲を回収すれば、狙った2枚だけを交換できます。</div>';
-      tutorialWinFeedback(pair + 'だけを交換できました。交換レッスン完了です！');
+        '<div class="hint-title">' + tr('success') + ': ' + tr('swapSuccess', {pair:pair}) + '</div>' +
+        '<div class="hint-reason">' + tr('swapTip') + '</div>';
+      tutorialWinFeedback(tr('swapSuccess', {pair:pair}));
     }
   }
 
@@ -2460,7 +2888,7 @@
       (tutorialKind === 'diagonal68' ? diagonal68TutorialSteps : escapeTutorialSteps));
     qualityMode = false; hintUsed = false; demoUsed = false;
     hintBtn.classList.remove('live');
-    hintLabel.textContent = '次の一手を見る';
+    hintLabel.textContent = tr('hintShow');
     board.classList.remove('won');
     tiles.forEach(function(t){ t.style.animation = 'none'; void t.offsetWidth; t.style.animation = ''; });
     clearTutorialRejectNotice();
@@ -2496,7 +2924,7 @@
     clearPreview();
     qualityMode = false; hintUsed = false; demoUsed = false;
     hintBtn.classList.remove('live');
-    hintLabel.textContent = '次の一手を見る';
+    hintLabel.textContent = tr('hintShow');
     freeMode = true; solved = false; moves = 0; history = []; busy = false;
     if (useSaved && freeInitial){
       state = freeInitial.slice();
@@ -2518,7 +2946,7 @@
     relayout();
     setKnobsEnabled(true);
     refresh();
-    say('上級者用フリー — 最短手数は秘密。交換技を使って、自由に完成を目指してください。');
+    say(tr('freeIntro'));
     showStartFeedback();
   }
 
@@ -2533,9 +2961,9 @@
     progressSteps.forEach(function(step, index){
       var number = index + 1;
       var par = number >= 13 ? 5 : (number >= 10 ? 4 : Math.min(3, Math.ceil(number / 3)));
-      step.setAttribute('aria-label',
-        '問題' + number + '、最短' + par + '手' + (clearedStages.has(number) ? '、クリア済み' : ''));
-      step.title = '問題 ' + number + ' — 最短' + par + '手';
+      var label = tr('puzzleIntro', {stage:number, par:par});
+      step.setAttribute('aria-label', label);
+      step.title = label;
     });
   }
 
@@ -2590,8 +3018,10 @@
         gestureFinger.classList.remove('swipe-down', 'swipe-up');
         void gestureFinger.offsetWidth;
         gestureFinger.classList.add(solution[step].cw ? 'swipe-down' : 'swipe-up');
-        gestureStep.textContent = (step + 1) + '手目：ここを' +
-          (solution[step].cw ? '下へ' : '上へ') + 'スワイプ';
+        gestureStep.textContent = tr('gestureMove', {
+          step:step + 1,
+          direction:solution[step].cw ? tr('down') : tr('up')
+        });
         gestureTimer = setTimeout(function(){
           /* 指と軸は現在の手に残したまま、スワイプに追従して盤面を回す */
           demoState = permuteArray(demoState, solution[step].p, solution[step].cw);
@@ -2603,7 +3033,7 @@
         }, reduce ? 180 : 300);
       } else {
         gestureFinger.classList.remove('swipe-down', 'swipe-up');
-        gestureStep.textContent = '3手で完成！';
+        gestureStep.textContent = tr('gestureDone');
         gestureTimer = setTimeout(startGestureDemo, reduce ? 1600 : 2600);
       }
     }
@@ -2614,7 +3044,7 @@
       pivot.removeAttribute('data-arrow');
     });
     gestureFinger.classList.remove('swipe-down', 'swipe-up');
-    gestureStep.textContent = 'この盤面からスタート';
+    gestureStep.textContent = tr('gestureStart');
     /* 完成盤面から初期盤面へは回転させず、一瞬で戻す */
     void gestureBoard.offsetWidth;
     gestureBoard.classList.remove('resetting');
@@ -2632,20 +3062,21 @@
     if (introOn || busy || demoOn) return;
     introReview = true;
     introOn = true;
-    startBtn.textContent = 'ゲームに戻る';
+    startBtn.textContent = tr('backGame');
     showIntroCard();
   }
 
   function renderTutorialGuide(kind){
     var data = tutorialGuideData[kind];
+    var copy = localizedGuide(kind);
     tutorialGuideTabs.forEach(function(tab){
       tab.setAttribute('aria-pressed', String(tab.dataset.tutorialKind === kind));
     });
-    tutorialGuideTitle.textContent = data.title;
-    tutorialGuideLead.textContent = data.lead;
-    tutorialGuideDifficulty.textContent = data.difficulty;
-    tutorialGuideMastery.textContent = data.mastery;
-    tutorialGuideBoard.setAttribute('aria-label', data.aria);
+    tutorialGuideTitle.textContent = copy.title;
+    tutorialGuideLead.textContent = copy.lead;
+    tutorialGuideDifficulty.textContent = copy.difficulty;
+    tutorialGuideMastery.textContent = copy.mastery;
+    tutorialGuideBoard.setAttribute('aria-label', copy.aria);
     tutorialGuideBoard.innerHTML = '';
 
     data.state.forEach(function(value){
@@ -2718,7 +3149,7 @@
     introOn = false;
     if (introReview){
       introReview = false;
-      startBtn.textContent = '全15問のパズルを始める';
+      startBtn.textContent = tr('start');
       refresh();
       return;
     }
@@ -2734,7 +3165,7 @@
     if (busy || solved || (tutorialOn && tutorialStep >= tutorialSteps.length)) return;
     if (freeMode && !fullSolverMove){
       startSolverWorker();
-      say('上級者用フリーの答えを準備中です。少し待ってからもう一度押してください。');
+      say(tr('solverPrep'));
       return;
     }
     var queue = tutorialOn
@@ -2746,23 +3177,21 @@
     if (tutorialOn){
       tutorialHintVisible = false;
       hintBtn.classList.remove('live');
-      hintLabel.textContent = '次の一手を見る';
+      hintLabel.textContent = tr('hintShow');
     }
     clearPreview();
     setKnobsEnabled(false);
     undoBtn.disabled = true; resetBtn.disabled = true; mixBtn.disabled = true;
     hintBtn.disabled = true; strategyBtn.disabled = true;
     demoBtn.classList.add('live');
-    demoLabel.textContent = '停止';
+    demoLabel.textContent = tr('stop');
 
     var total = queue.length, n = 0;
     (function next(){
       if (!demoOn) return;
       if (n >= total){ stopDemo(); return; }
       var mv = queue[n++];
-      var pivotNames = ['左上','右上','左下','右下'];
-      say('AUTO ' + n + ' / ' + total + '手 — ' + pivotNames[mv.p] + 'の軸を' +
-        (mv.cw ? '右回り' : '左回り') + 'に90°');
+      say('AUTO ' + n + ' / ' + total + ' — ' + (mv.cw ? tr('right') : tr('left')) + ' 90°');
       knobs[mv.p].classList.add('hot');
       knobs[mv.p].classList.add(mv.cw ? 'press-cw' : 'press-ccw');
       orbits[mv.p].classList.add('show');
@@ -2788,12 +3217,10 @@
     setKnobsEnabled(!solved);
     mixBtn.disabled = tutorialOn;
     demoBtn.classList.remove('live');
-    demoLabel.textContent = '答えを見る';
+    demoLabel.textContent = tr('answer');
     refresh();
     if (wasOn && !silent && !solved){
-      say(tutorialOn
-        ? '答えの再生をとめました。ここから自分で続けられます。'
-        : 'AUTOをとめました。もう一度押すと、この局面からルートを再計算します。');
+      say(tutorialOn ? tr('autoStopLesson') : tr('autoStop'));
     }
   }
 
@@ -2807,12 +3234,12 @@
       tutorialStep = Math.max(0, tutorialStep - 1);
       tutorialHintVisible = false;
       hintBtn.classList.remove('live');
-      hintLabel.textContent = '次の一手を見る';
+      hintLabel.textContent = tr('hintShow');
       rotate(tutorialLast.p, !tutorialLast.cw, {
         force:true,
         after:function(){
           renderTutorial();
-          say('1手もどしました。手順も1つ戻ります。');
+          say(tr('undoLesson'));
         }
       });
       return;
@@ -2823,12 +3250,12 @@
       board.classList.remove('won');
       tiles.forEach(function(t){ t.style.animation = 'none'; void t.offsetWidth; t.style.animation = ''; });
       setKnobsEnabled(true);
-      nextBtn.innerHTML = '<span class="nav-label">次へ</span> →';
+      nextBtn.innerHTML = '<span class="nav-label">' + tr('next') + '</span> →';
     }
     var last = history.pop();
     moves = Math.max(0, moves - 1);
     rotate(last.p, !last.cw, {});
-    say('1手もどしました。手数も1つ減ります。');
+    say(tr('undoDone'));
   }
 
   function resetPuzzle(){
@@ -2836,18 +3263,18 @@
     if (tutorialOn){
       if (celebration) celebration.classList.remove('show');
       startTutorial(tutorialKind);
-      say('このレッスンを最初からやり直します。');
+      say(tr('restartLesson'));
       showResetFeedback();
       return;
     }
     if (freeMode){
       startFreeGame(true);
-      say('上級者用フリーを最初の盤面へ戻しました。');
+      say(tr('resetFree'));
       showResetFeedback();
       return;
     }
     scramble(puzzlePar, true);
-    say('この問題を最初の盤面へ戻しました。');
+    say(tr('resetPuzzle'));
     showResetFeedback();
   }
 
@@ -2886,10 +3313,32 @@
   tutorialGuideOverlay.addEventListener('click', function(e){
     if (e.target === tutorialGuideOverlay) closeTutorialGuide(true);
   });
+  languageToggle.addEventListener('click', function(e){
+    e.stopPropagation();
+    var open = !languageMenu.classList.contains('show');
+    languageMenu.classList.toggle('show', open);
+    languageToggle.setAttribute('aria-expanded', String(open));
+    if (open) languageButtons.find(function(button){ return button.dataset.lang === currentLang; }).focus();
+  });
+  languageButtons.forEach(function(button){
+    button.addEventListener('click', function(){
+      applyLanguage(button.dataset.lang);
+      languageMenu.classList.remove('show');
+      languageToggle.setAttribute('aria-expanded', 'false');
+      languageToggle.focus();
+    });
+  });
+  document.addEventListener('click', function(e){
+    if (!e.target.closest('.language-picker')){
+      languageMenu.classList.remove('show');
+      languageToggle.setAttribute('aria-expanded', 'false');
+    }
+  });
 
   /* ---------- 起動 ---------- */
   build();
   bindKnobs();
+  applyLanguage('ja');
   startSolverWorker();
   updateStageOptions();
   if (embedMode) beginGame();
