@@ -1067,7 +1067,7 @@
       ,clearAnswer:'答えを確認しました。最初から自力で挑戦できます。', clearHint:'次の一手を使った練習クリアです。最初から再挑戦できます。',
       clearFree:'上級者用フリーを完成しました！', allClear:'全15問クリア！ お見事です。', clearOptimal:'最短手数でクリア！ 次の問題へ進みましょう。',
       clearMoves:'{moves}手で完成しました。次の問題へ進みましょう。', puzzleIntro:'問題{stage} — 最短{par}手。盤面をスワイプして4枚を90°回してください。',
-      freeIntro:'上級者用フリー — 手数制限なしで完成を目指してください。', solverPrep:'答えを準備中です。少し待ってからもう一度押してください。',
+      freeIntro:'上級者用フリー — 手数制限なしで完成を目指してください。', freeResume:'上級者用フリーの続きから再開します。', solverPrep:'答えを準備中です。少し待ってからもう一度押してください。',
       autoStopLesson:'答えの再生を止めました。ここから自分で続けられます。', autoStop:'自動再生を止めました。',
       undoLesson:'1手戻しました。手順も1つ戻ります。', undoDone:'1手戻しました。手数も1つ減ります。',
       restartLesson:'このレッスンを最初からやり直します。', resetFree:'上級者用フリーを最初の盤面へ戻しました。', resetPuzzle:'この問題を最初の盤面へ戻しました。'
@@ -1111,7 +1111,7 @@
       ,clearAnswer:'Solution reviewed. Try again from the beginning on your own.', clearHint:'Practice clear with “Show next move.” Try again from the beginning.',
       clearFree:'Expert Free Play complete!', allClear:'All 15 puzzles complete! Well done.', clearOptimal:'Optimal clear! Continue to the next puzzle.',
       clearMoves:'Completed in {moves} moves. Continue to the next puzzle.', puzzleIntro:'Puzzle {stage} — optimal in {par} moves. Swipe to rotate four tiles by 90°.',
-      freeIntro:'Expert Free Play — complete the board with no move limit.', solverPrep:'Preparing the solution. Please try again in a moment.',
+      freeIntro:'Expert Free Play — complete the board with no move limit.', freeResume:'Resuming your Expert Free Play board.', solverPrep:'Preparing the solution. Please try again in a moment.',
       autoStopLesson:'Solution playback stopped. Continue on your own from here.', autoStop:'Automatic playback stopped.',
       undoLesson:'Moved back one step in the lesson.', undoDone:'Undid one move.',
       restartLesson:'Restarting this lesson from the beginning.', resetFree:'Expert Free Play returned to its starting board.', resetPuzzle:'Puzzle returned to its starting board.'
@@ -1155,7 +1155,7 @@
       ,clearAnswer:'已查看答案。可以从头独立挑战。', clearHint:'使用“查看下一步”完成练习。可以从头再挑战。',
       clearFree:'高手自由模式完成！', allClear:'15道关卡全部完成！太棒了。', clearOptimal:'最少步数过关！请进入下一题。',
       clearMoves:'用{moves}步完成。请进入下一题。', puzzleIntro:'第{stage}题 — 最少{par}步。滑动棋盘让四格旋转90°。',
-      freeIntro:'高手自由模式 — 不限步数完成棋盘。', solverPrep:'正在准备答案，请稍后再试。',
+      freeIntro:'高手自由模式 — 不限步数完成棋盘。', freeResume:'继续上次的高手自由模式棋盘。', solverPrep:'正在准备答案，请稍后再试。',
       autoStopLesson:'已停止答案播放，可以从这里继续。', autoStop:'已停止自动播放。',
       undoLesson:'已撤销一步，课程步骤也退回一步。', undoDone:'已撤销一步。', restartLesson:'从头重新开始本课程。',
       resetFree:'高手自由模式已回到初始棋盘。', resetPuzzle:'本题已回到初始棋盘。'
@@ -1199,7 +1199,7 @@
       ,clearAnswer:'정답을 확인했습니다. 처음부터 혼자 다시 도전해 보세요.', clearHint:'“다음 수 보기”를 사용한 연습 성공입니다. 처음부터 다시 도전할 수 있습니다.',
       clearFree:'고급 자유 모드 완성!', allClear:'15개 문제를 모두 완성했습니다! 훌륭합니다.', clearOptimal:'최단 수 성공! 다음 문제로 가세요.',
       clearMoves:'{moves}수로 완성했습니다. 다음 문제로 가세요.', puzzleIntro:'문제 {stage} — 최단 {par}수. 스와이프해 네 칸을 90° 돌리세요.',
-      freeIntro:'고급 자유 모드 — 수 제한 없이 완성을 목표로 하세요.', solverPrep:'정답을 준비 중입니다. 잠시 후 다시 눌러 주세요.',
+      freeIntro:'고급 자유 모드 — 수 제한 없이 완성을 목표로 하세요.', freeResume:'고급 자유 모드의 이전 보드에서 계속합니다.', solverPrep:'정답을 준비 중입니다. 잠시 후 다시 눌러 주세요.',
       autoStopLesson:'정답 재생을 멈췄습니다. 여기서 직접 계속할 수 있습니다.', autoStop:'자동 재생을 멈췄습니다.',
       undoLesson:'한 수 되돌렸습니다. 레슨 단계도 하나 돌아갑니다.', undoDone:'한 수 되돌렸습니다.',
       restartLesson:'이 레슨을 처음부터 다시 시작합니다.', resetFree:'고급 자유 모드를 시작 보드로 되돌렸습니다.', resetPuzzle:'이 문제를 시작 보드로 되돌렸습니다.'
@@ -1375,7 +1375,7 @@
   var clearedStages = new Set();
   var stageRecords = Object.create(null);
   var qualityMode = false, hintUsed = false;
-  var freeMode = false, freeInitial = null;
+  var freeMode = false, freeInitial = null, freeSession = null;
   var introOn = false, introReview = false;
   var gestureTimer = null;
   var advancedOn = false;
@@ -1682,7 +1682,7 @@
         var action = button.getAttribute('data-clear-action');
         celebrationOpenMenuOnClose = false;
         closeCelebration();
-        if (action === 'free') startFreeGame(false);
+        if (action === 'free') startFreeGame('resume');
         else openTutorialGuide(action);
       });
     });
@@ -1815,6 +1815,7 @@
   function logMove(p, cw){
     history.push({ p: p, cw: cw });
     moves++;
+    if (freeMode) saveFreeSession();
   }
 
   function clearTutorialRejectNotice(){
@@ -2206,7 +2207,7 @@
       celebrationResetOnClose = false;
       setTimeout(function(){
         stopDemo(true);
-        if (freeMode) startFreeGame(true);
+        if (freeMode) startFreeGame('reset');
         else scramble(puzzlePar, true);
         say(tr('resetPuzzle'));
         showResetFeedback();
@@ -2584,7 +2585,7 @@
     else if (key === 'r'){
       e.preventDefault();
       if (tutorialOn) resetPuzzle();
-      else if (freeMode) startFreeGame(false);
+      else if (freeMode) startFreeGame('reset');
       else scramble();
     }
     else if (key === 'h'){ e.preventDefault(); showHint(); }
@@ -2915,8 +2916,20 @@
     else refresh();
   }
 
-  function startFreeGame(useSaved){
+  function saveFreeSession(){
+    if (!freeMode) return;
+    freeSession = {
+      state:state.slice(),
+      moves:moves,
+      history:history.map(function(move){ return {p:move.p, cw:move.cw}; }),
+      hintUsed:hintUsed,
+      demoUsed:demoUsed
+    };
+  }
+
+  function startFreeGame(mode){
     if (busy || demoOn) return;
+    mode = mode || 'resume';
     if (tutorialOn) stopTutorial(false);
     stopDemo(true);
     closeCelebration();
@@ -2926,7 +2939,14 @@
     hintBtn.classList.remove('live');
     hintLabel.textContent = tr('hintShow');
     freeMode = true; solved = false; moves = 0; history = []; busy = false;
-    if (useSaved && freeInitial){
+    var resuming = mode === 'resume' && freeSession;
+    if (resuming){
+      state = freeSession.state.slice();
+      moves = freeSession.moves;
+      history = freeSession.history.map(function(move){ return {p:move.p, cw:move.cw}; });
+      hintUsed = freeSession.hintUsed;
+      demoUsed = freeSession.demoUsed;
+    } else if (mode === 'reset' && freeInitial){
       state = freeInitial.slice();
     } else {
       state = [0,1,2,3,4,5,6,7,8];
@@ -2941,12 +2961,14 @@
         lastP = p; lastCw = cw;
       }
       freeInitial = state.slice();
+      freeSession = null;
     }
     scrambleMoves = [];
     relayout();
     setKnobsEnabled(true);
     refresh();
-    say(tr('freeIntro'));
+    saveFreeSession();
+    say(tr(resuming ? 'freeResume' : 'freeIntro'));
     showStartFeedback();
   }
 
@@ -3132,6 +3154,7 @@
 
   function openAdvanced(){
     if (introOn || tutorialGuideOn || busy || demoOn) return;
+    if (freeMode) saveFreeSession();
     advancedOn = true;
     advancedOverlay.classList.add('show');
     setTimeout(function(){ advancedCloseBtn.focus(); }, 50);
@@ -3254,7 +3277,9 @@
     }
     var last = history.pop();
     moves = Math.max(0, moves - 1);
-    rotate(last.p, !last.cw, {});
+    rotate(last.p, !last.cw, {
+      after:function(){ if (freeMode) saveFreeSession(); }
+    });
     say(tr('undoDone'));
   }
 
@@ -3268,7 +3293,7 @@
       return;
     }
     if (freeMode){
-      startFreeGame(true);
+      startFreeGame('reset');
       say(tr('resetFree'));
       showResetFeedback();
       return;
@@ -3280,7 +3305,7 @@
 
   undoBtn.addEventListener('click', undo);
   resetBtn.addEventListener('click', resetPuzzle);
-  mixBtn.addEventListener('click', function(){ if (freeMode) startFreeGame(false); else scramble(); });
+  mixBtn.addEventListener('click', function(){ if (freeMode) startFreeGame('new'); else scramble(); });
   strategyBtn.addEventListener('click', showStrategyHint);
   hintBtn.addEventListener('click', showHint);
   demoBtn.addEventListener('click', toggleDemo);
@@ -3290,7 +3315,9 @@
   normalModeBtn.addEventListener('click', function(){
     closeAdvanced();
     if (tutorialOn) stopTutorial(true);
-    else if (freeMode) scramble(puzzlePar, true);
+    else if (freeMode){
+      scramble(puzzlePar, true);
+    }
   });
   tutorialGuideTabs.forEach(function(tab){
     tab.addEventListener('click', function(){
@@ -3298,7 +3325,10 @@
       renderTutorialGuide(pendingTutorialKind);
     });
   });
-  freeBtn.addEventListener('click', function(){ closeAdvanced(); startFreeGame(false); });
+  freeBtn.addEventListener('click', function(){
+    closeAdvanced();
+    if (!freeMode) startFreeGame('resume');
+  });
   nextBtn.addEventListener('click', nextPuzzle);
   prevBtn.addEventListener('click', prevPuzzle);
   startBtn.addEventListener('click', beginGame);
