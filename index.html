@@ -690,11 +690,25 @@
   }
   html.embed .header-top{
     justify-content:flex-end;
+    gap:8px;
     margin-bottom:6px;
   }
-  html.embed .header-top .eyebrow,
-  html.embed h1{display:none}
-  html.embed header{margin-bottom:10px}
+  html.embed .header-top .eyebrow{display:none}
+  html.embed header{
+    position:relative;
+    margin-bottom:10px;
+  }
+  html.embed h1{
+    position:absolute;
+    top:8px;
+    left:0;
+    display:block;
+    font-size:14px;
+    line-height:1;
+    letter-spacing:.08em;
+    text-shadow:none;
+    opacity:.8;
+  }
   html.embed .challenge-title{margin-top:0}
   html.embed .play{row-gap:12px}
   html.embed .board-wrap{
