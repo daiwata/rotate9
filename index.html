@@ -1053,6 +1053,7 @@
   var fullSolverDistance = null, fullSolverMove = null, solverWorker = null;
   var tutorialOn = false, tutorialStep = 0, tutorialKind = 'adjacent',
     tutorialHintVisible = false, tutorialRejecting = false;
+  var tutorialRejectTimer = null;
   var tutorialGuideOn = false, pendingTutorialKind = null;
   var adjacentTutorialSteps = [
     { p:1, cw:true,  why:'まず右上を右へ。8と9を交換するため、中央を使って動かし始めます。' },
@@ -1354,6 +1355,24 @@
     moves++;
   }
 
+  function clearTutorialRejectNotice(){
+    if (tutorialRejectTimer){
+      clearTimeout(tutorialRejectTimer);
+      tutorialRejectTimer = null;
+    }
+    tutorialRejecting = false;
+  }
+
+  function finishTutorialRejectNotice(){
+    if (tutorialRejectTimer) clearTimeout(tutorialRejectTimer);
+    tutorialRejectTimer = setTimeout(function(){
+      tutorialRejectTimer = null;
+      tutorialRejecting = false;
+      refresh();
+      renderTutorial();
+    }, 1000);
+  }
+
   /* レッスンで違う操作を選んだとき、回してから元へ戻して反応を伝える */
   function rejectTutorialMove(p, cw){
     var cyc = cellsOf(p), kc = knobXY(p), items = [];
@@ -1385,13 +1404,9 @@
         if (++done === 4){
           for (var q = 0; q < 4; q++) place(state[cyc[q]], cyc[q]);
           clearPreview();
+          busy = false;
           refresh();
-          setTimeout(function(){
-            tutorialRejecting = false;
-            busy = false;
-            refresh();
-            renderTutorial();
-          }, 1000);
+          finishTutorialRejectNotice();
         }
       };
     });
@@ -1407,6 +1422,7 @@
     opts = opts || {};
     if (busy || (solved && !opts.force)) return;
     var tutorialMove = tutorialOn && !opts.force;
+    if (tutorialMove && tutorialRejecting) clearTutorialRejectNotice();
     if (tutorialMove && !tutorialAllows(p, cw, 1)){
       rejectTutorialMove(p, cw);
       return;
@@ -1903,6 +1919,7 @@
     if (introOn || busy || solved || demoOn || drag) return;
     if (e.pointerType === 'mouse' && e.button !== 0) return;
     if (e.target.closest && e.target.closest('.half')) return;   // つまみのボタンは従来どおり
+    if (tutorialOn && tutorialRejecting) clearTutorialRejectNotice();
 
     var pt = localPoint(e);
     var p = nearestPivot(pt.x, pt.y), kc = knobXY(p);
@@ -1979,6 +1996,7 @@
     var turns = Math.round(d / 90);
     if (turns === 0 && Math.abs(d) >= 14 && ms < 300) turns = d >= 0 ? 1 : -1;
     var tutorialAttempted = tutorialOn && turns !== 0;
+    if (tutorialAttempted && tutorialRejecting) clearTutorialRejectNotice();
     var tutorialAccepted = tutorialAttempted && tutorialAllows(dg.p, turns > 0, Math.abs(turns));
     var tutorialRejected = tutorialAttempted && !tutorialAccepted;
     if (tutorialRejected){
@@ -2012,13 +2030,9 @@
           clearPreview();
           moveFeedback(cyc, dg.p);
           if (tutorialRejected){
+            busy = false;
             refresh();
-            setTimeout(function(){
-              tutorialRejecting = false;
-              busy = false;
-              refresh();
-              renderTutorial();
-            }, 1000);
+            finishTutorialRejectNotice();
             return;
           }
           busy = false;
@@ -2424,7 +2438,8 @@
     hintLabel.textContent = '次の一手を見る';
     board.classList.remove('won');
     tiles.forEach(function(t){ t.style.animation = 'none'; void t.offsetWidth; t.style.animation = ''; });
-    tutorialOn = true; tutorialStep = 0; tutorialHintVisible = false; tutorialRejecting = false;
+    clearTutorialRejectNotice();
+    tutorialOn = true; tutorialStep = 0; tutorialHintVisible = false;
     solved = false; moves = 0; history = [];
     state = tutorialGuideData[tutorialKind].state.slice();
     relayout();
@@ -2437,7 +2452,8 @@
   }
 
   function stopTutorial(startGame){
-    tutorialOn = false; tutorialStep = 0; tutorialHintVisible = false; tutorialRejecting = false;
+    clearTutorialRejectNotice();
+    tutorialOn = false; tutorialStep = 0; tutorialHintVisible = false;
     elStat.classList.remove('tutorial');
     clearPreview();
     tutorialBtn.classList.remove('live');
