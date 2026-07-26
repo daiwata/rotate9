@@ -776,11 +776,17 @@
     45%{box-shadow:0 28px 68px -28px #000,inset 0 0 0 2px rgba(90,201,180,.35)}
   }
   @media (pointer:coarse){
-    /* スマホは軸だけを見せ、盤面全体をスワイプ操作に使う */
+    /* スマホは点だけを見せ、レッスンの「次の一手」だけ回転方向を表示する */
     .knob .dot{opacity:.9}
     .knob .dot::before{border-color:rgba(208,168,82,.3)}
     .knob .half{pointer-events:none}
     .knob .half::before,.knob .half span{opacity:0!important}
+    .knob.hinting .dot{opacity:0}
+    .knob.hinting .half::before,.knob.hinting .half span{opacity:.12!important}
+    .knob.hinting.press-cw .half.cw::before,
+    .knob.hinting.press-cw .half.cw span,
+    .knob.hinting.press-ccw .half.ccw::before,
+    .knob.hinting.press-ccw .half.ccw span{opacity:1!important}
   }
   @media (prefers-reduced-motion:reduce){
     .orbit.show{animation:none}
