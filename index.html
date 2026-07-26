@@ -788,7 +788,10 @@
     .knob.hinting.press-ccw .half.ccw::before,
     .knob.hinting.press-ccw .half.ccw span{opacity:1!important}
     .knob.hinting.press-cw .half.cw,
-    .knob.hinting.press-ccw .half.ccw{pointer-events:auto;z-index:5}
+    .knob.hinting.press-ccw .half.ccw{
+      pointer-events:auto!important;z-index:5;touch-action:manipulation;
+      -webkit-tap-highlight-color:transparent;
+    }
     .knob.hinting.press-cw .half.cw::after,
     .knob.hinting.press-ccw .half.ccw::after{
       content:"";position:absolute;top:0;bottom:0;
@@ -2040,6 +2043,14 @@
               if (!busy) renderTutorial();
             } else preview(p, true, cw);     // 回したあとも軌道と光を残す
           });
+          btn.addEventListener('touchend', function(e){
+            if (!tutorialOn || !tutorialHintVisible || demoOn || busy) return;
+            var expected = tutorialSteps[tutorialStep];
+            if (!expected || p !== expected.p || cw !== expected.cw) return;
+            e.preventDefault();
+            e.stopPropagation();
+            rotate(p, cw, { log: true, count: true });
+          }, { passive:false });
           btn.addEventListener('contextmenu', function(e){ e.preventDefault(); });
         })(halves[h], halves[h].classList.contains('cw'));
       }
