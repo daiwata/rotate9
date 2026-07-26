@@ -682,9 +682,7 @@
     padding:14px 12px 18px;
     overflow:hidden;
   }
-  html.embed .header-top,html.embed h1{display:none}
   html.embed header{margin-bottom:10px}
-  html.embed .challenge-title{margin-top:0}
   html.embed .play{row-gap:12px}
   html.embed .board-wrap{
     width:min(100%,420px);
@@ -2410,8 +2408,7 @@
   bindKnobs();
   startSolverWorker();
   updateStageOptions();
-  if (embedMode) beginGame();
-  else runIntro();
+  runIntro();
   if (window.ResizeObserver){
     new ResizeObserver(function(){ if (!busy && !drag) relayout(); }).observe(board);
   } else {
