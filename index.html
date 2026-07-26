@@ -743,7 +743,33 @@
   @media (max-width:520px){
     .advanced-actions{grid-template-columns:1fr}
     .advanced-actions .menu-normal,.advanced-actions .advanced-free{grid-column:auto}
-    .tutorial-guide-copy{grid-template-columns:1fr}
+    .tutorial-guide-card{padding:16px 14px}
+    .tutorial-guide-card .intro-kicker{margin-bottom:5px}
+    .tutorial-guide-close{
+      top:8px;right:8px;width:32px;height:32px;font-size:18px;
+    }
+    .tutorial-guide-tabs{
+      grid-template-columns:repeat(4,1fr);gap:5px;margin:8px 0 10px;
+    }
+    .tutorial-guide-tab{
+      min-width:0;min-height:38px;padding:4px 2px;font-size:11px;line-height:1.25;
+    }
+    .tutorial-guide-card h2{margin-bottom:5px;font-size:21px}
+    .tutorial-guide-lead{
+      margin-bottom:8px!important;font-size:15px!important;line-height:1.5!important;
+    }
+    .tutorial-guide-board{
+      width:142px;margin-bottom:10px;padding:6px;gap:4px;
+    }
+    .tutorial-guide-tile{font-size:20px}
+    .tutorial-guide-arrow{min-width:28px;height:28px;font-size:23px}
+    .tutorial-guide-copy{
+      grid-template-columns:1fr 1fr;gap:6px;margin-bottom:10px;
+    }
+    .tutorial-guide-copy section{padding:8px}
+    .tutorial-guide-copy h3{margin-bottom:3px;font-size:12px}
+    .tutorial-guide-copy p{font-size:14px;line-height:1.55}
+    .tutorial-guide-start{min-height:46px;font-size:15px}
   }
   @keyframes boardSettleMobile{
     45%{box-shadow:0 28px 68px -28px #000,inset 0 0 0 2px rgba(90,201,180,.35)}
@@ -1757,7 +1783,14 @@
     candidatePivot = p;
     if (p >= 0) knobs[p].classList.add('candidate');
   }
+  function clearMoveQuality(p){
+    board.classList.remove('quality-good','quality-same','quality-bad');
+    qualityLabel.className = 'quality-label';
+    knobs[p].classList.remove('evaluating',
+      'cw-good','cw-same','cw-bad','ccw-good','ccw-same','ccw-bad');
+  }
   function showMoveQuality(p, cw){
+    clearMoveQuality(p);
     hintUsed = true;
     var currentKey = state.join('');
     var nextKey = permuteArray(state, p, cw).join('');
@@ -1776,6 +1809,23 @@
     qualityLabel.textContent = direction + (kind === 'good'
       ? 'で近づく  ' + before + ' → ' + after
       : (kind === 'same' ? 'では変わらない  ' + before + ' → ' + after : 'では遠ざかる  ' + before + ' → ' + after));
+  }
+  function showTutorialMoveQuality(p, cw){
+    if (!tutorialOn || tutorialStep >= tutorialSteps.length) return;
+    clearMoveQuality(p);
+    var expected = tutorialSteps[tutorialStep];
+    var correctPivot = p === expected.p;
+    var kind = correctPivot && cw === expected.cw ? 'good' : 'bad';
+    var otherKind = correctPivot && !cw === expected.cw ? 'good' : 'bad';
+    knobs[p].classList.add('evaluating');
+    knobs[p].classList.add((cw ? 'cw-' : 'ccw-') + kind);
+    knobs[p].classList.add((cw ? 'ccw-' : 'cw-') + otherKind);
+    board.classList.add('quality-' + kind);
+    qualityLabel.className = 'quality-label show' + (kind === 'good' ? '' : ' bad');
+    var direction = cw ? '↻ 右回り' : '↺ 左回り';
+    qualityLabel.textContent = direction + (kind === 'good'
+      ? '　この方向'
+      : (correctPivot ? '　反対方向です' : '　別の軸です'));
   }
   function xf(it, deg, kc){
     var rad = deg * Math.PI / 180, c = Math.cos(rad), sn = Math.sin(rad);
@@ -1804,6 +1854,7 @@
     showCandidate(-1);
     try { board.setPointerCapture(e.pointerId); } catch (_) {}
     board.classList.add('dragging');
+    clearPreview();
     preview(p, true, true);
     e.preventDefault();
   });
@@ -1841,14 +1892,13 @@
     orbits[drag.p].classList.toggle('rev', !cw);
     knobs[drag.p].classList.toggle('press-cw',  cw && shown);
     knobs[drag.p].classList.toggle('press-ccw', !cw && shown);
-    if (qualityMode && shown && drag.hintCw !== cw){
-      showMoveQuality(drag.p, cw);
+    var moveQualityOn = qualityMode || (tutorialOn && tutorialHintVisible);
+    if (moveQualityOn && shown && drag.hintCw !== cw){
+      if (tutorialOn) showTutorialMoveQuality(drag.p, cw);
+      else showMoveQuality(drag.p, cw);
       drag.hintCw = cw;
-    } else if (qualityMode && !shown && drag.hintCw !== null){
-      board.classList.remove('quality-good','quality-same','quality-bad');
-      qualityLabel.className = 'quality-label';
-      knobs[drag.p].classList.remove('evaluating',
-        'cw-good','cw-same','cw-bad','ccw-good','ccw-same','ccw-bad');
+    } else if (moveQualityOn && !shown && drag.hintCw !== null){
+      clearMoveQuality(drag.p);
       drag.hintCw = null;
     }
   });
