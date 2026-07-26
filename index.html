@@ -787,6 +787,14 @@
     .knob.hinting.press-cw .half.cw span,
     .knob.hinting.press-ccw .half.ccw::before,
     .knob.hinting.press-ccw .half.ccw span{opacity:1!important}
+    .knob.hinting.press-cw .half.cw,
+    .knob.hinting.press-ccw .half.ccw{pointer-events:auto;z-index:5}
+    .knob.hinting.press-cw .half.cw::after,
+    .knob.hinting.press-ccw .half.ccw::after{
+      content:"";position:absolute;top:0;bottom:0;
+    }
+    .knob.hinting.press-cw .half.cw::after{left:calc(var(--k) / -2);right:0}
+    .knob.hinting.press-ccw .half.ccw::after{left:0;right:calc(var(--k) / -2)}
   }
   @media (prefers-reduced-motion:reduce){
     .orbit.show{animation:none}
