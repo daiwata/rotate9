@@ -496,10 +496,16 @@
     35%{box-shadow:0 0 0 5px rgba(90,201,180,.15),0 0 18px rgba(90,201,180,.22);transform:scale(1.035)}
   }
   .status.hint-reveal{animation:hintReveal .75s ease}
+  .status.move-hint-reveal{animation:moveHintReveal 1.9s ease}
   @keyframes hintReveal{
     0%{border-color:var(--line);border-left-color:var(--brass);background:rgba(22,32,46,.65)}
     28%{border-color:var(--teal);background:rgba(20,49,58,.9);box-shadow:0 0 22px rgba(90,201,180,.2)}
     100%{border-color:var(--line);border-left-color:var(--teal);background:rgba(22,32,46,.65)}
+  }
+  @keyframes moveHintReveal{
+    0%{border-color:var(--line);border-left-color:var(--brass);background:rgba(22,32,46,.65)}
+    15%,70%{border-color:var(--teal);border-left-color:var(--teal);background:rgba(20,49,58,.92);box-shadow:0 0 26px rgba(90,201,180,.26)}
+    100%{border-color:var(--line);border-left-color:var(--brass);background:rgba(22,32,46,.65);box-shadow:none}
   }
   .status:not(.tutorial){display:flex;align-items:center}
   .status.tutorial{height:auto;min-height:calc(3.3em + 24px);overflow:visible}
@@ -687,7 +693,6 @@
     margin-bottom:6px;
   }
   html.embed .header-top .eyebrow,
-  html.embed #advancedBtn,
   html.embed h1{display:none}
   html.embed header{margin-bottom:10px}
   html.embed .challenge-title{margin-top:0}
@@ -741,7 +746,7 @@
         <div class="primary-actions">
           <button class="btn" id="undoBtn">1手もどす</button>
           <button class="btn" id="resetBtn">やり直す</button>
-          <button class="btn" id="mixBtn">シャッフルする</button>
+          <button class="btn" id="mixBtn">シャッフル</button>
           <button class="btn" id="hintBtn"><span id="hintLabel">次の一手を見る</span></button>
           <button class="btn" id="demoBtn"><span id="demoLabel">答えを見る</span></button>
         </div>
@@ -1992,6 +1997,11 @@
         ? '盤面を少しスワイプすると、指を離す前にその一手を評価します。'
         : '盤上をマウスで探ると、次の一手を緑・黄・赤で評価します。')
       : '次の一手を隠しました。ここからは盤面だけを見て考えてみてください。');
+    if (qualityMode){
+      elStat.classList.remove('hint-reveal', 'move-hint-reveal');
+      void elStat.offsetWidth;
+      elStat.classList.add('move-hint-reveal');
+    }
   }
 
   function tutorialAllows(p, cw, turns){
