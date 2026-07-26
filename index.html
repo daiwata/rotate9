@@ -1978,8 +1978,13 @@
     // 最寄りの90°へ吸着。最初の1手だけは従来どおり、素早いフリックも拾う。
     var turns = Math.round(d / 90);
     if (turns === 0 && Math.abs(d) >= 14 && ms < 300) turns = d >= 0 ? 1 : -1;
-    var tutorialAccepted = tutorialOn && turns !== 0 && tutorialAllows(dg.p, turns > 0, Math.abs(turns));
-    if (tutorialOn && turns !== 0 && !tutorialAccepted) turns = 0;
+    var tutorialAttempted = tutorialOn && turns !== 0;
+    var tutorialAccepted = tutorialAttempted && tutorialAllows(dg.p, turns > 0, Math.abs(turns));
+    var tutorialRejected = tutorialAttempted && !tutorialAccepted;
+    if (tutorialRejected){
+      turns = 0;
+      tutorialRejecting = true;
+    }
     var target = turns * 90;
     var cyc = cellsOf(dg.p);
 
@@ -2003,10 +2008,22 @@
       var an = it.el.animate(ks, { duration: dur, easing: 'cubic-bezier(.2,.7,.3,1)' });
       an.onfinish = an.oncancel = function(){
         if (++done === 4){
-          busy = false;
           for (var q = 0; q < 4; q++) place(state[cyc[q]], cyc[q]);   // 誤差を残さない
           clearPreview();
-          moveFeedback(cyc, dg.p); refresh(); check();
+          moveFeedback(cyc, dg.p);
+          if (tutorialRejected){
+            refresh();
+            setTimeout(function(){
+              tutorialRejecting = false;
+              busy = false;
+              refresh();
+              renderTutorial();
+            }, 1000);
+            return;
+          }
+          busy = false;
+          refresh();
+          check();
           if (tutorialAccepted) advanceTutorial();
           else if (tutorialOn) renderTutorial();
         }
